@@ -8,14 +8,14 @@
 
 **Status:** ready-for-agent
 
-- [ ] Calling `kagi_search` with a query POSTs JSON to the Kagi search endpoint with a Bearer `Authorization` header; the body contains the query and the hardcoded `workflow: "search"` / `format: "json"` only
-- [ ] Results render as a numbered markdown list: `[title](url)`, date when present, snippet capped at ~240 characters
-- [ ] Non-web result arrays present in the response (news, direct answers, infoboxes, related searches, etc.) render as their own labeled sections
-- [ ] `props` and Kagi proxy image URLs never appear in tool output
-- [ ] HTTP 400/401/403/429/500 and network failures throw errors with plain-language, status-aware messages including Kagi's error code and `meta.trace` ID when available
-- [ ] An unset `KAGI_API_KEY` throws an error containing setup instructions before any request is made
-- [ ] The tool's `AbortSignal` reaches fetch (interrupting the session cancels an in-flight search), combined with a 15s client-side timeout
-- [ ] All behavior above is covered by tests through the tool `execute` boundary with an injected stub fetch — no network, no mocking library
-- [ ] `npm run typecheck` and `npm test` pass
+- [x] Calling `kagi_search` with a query POSTs JSON to the Kagi search endpoint with a Bearer `Authorization` header; the body contains the query and the hardcoded `workflow: "search"` / `format: "json"` only
+- [x] Results render as a numbered markdown list: `[title](url)`, date when present, snippet capped at ~240 characters
+- [x] Non-web result arrays present in the response (news, direct answers, infoboxes, related searches, etc.) render as their own labeled sections
+- [x] `props` and Kagi proxy image URLs never appear in tool output
+- [x] HTTP 400/401/403/429/500 and network failures throw errors with plain-language, status-aware messages including Kagi's error code and `meta.trace` ID when available
+- [x] An unset `KAGI_API_KEY` throws an error containing setup instructions before any request is made
+- [x] The tool's `AbortSignal` reaches fetch (interrupting the session cancels an in-flight search), combined with a 15s client-side timeout
+- [x] All behavior above is covered by tests through the tool `execute` boundary with an injected stub fetch — no network, no mocking library
+- [x] `npm run typecheck` and `npm test` pass
 
 ## Comments
