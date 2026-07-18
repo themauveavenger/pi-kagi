@@ -1,0 +1,1579 @@
+openapi: 3.0.0
+servers:
+  - url: https://kagi.com/api/v1
+    description: Production api endpoint
+info:
+  title: Kagi API
+  version: '1'
+  description: >
+    The Kagi API provides programmatic access to data that powers our search
+    results & more. 
+
+
+    Get started on the [API Dashboard](https://kagi.com/api) to set up billing,
+    manage API keys, and more.
+
+
+    See our [API Pricing](https://kagi.com/api/pricing) page for standard rates.
+
+
+    ### Official Client Libraries
+
+
+    We offer the following libraries you can use to interact with the Kagi API.
+    These are generated from an OpenAPI spec.
+
+
+    - [Golang](https://github.com/kagisearch/kagi-openapi-golang)
+
+    - [Python](https://github.com/kagisearch/kagi-openapi-python)
+
+    - [TypeScript](https://github.com/kagisearch/kagi-openapi-typescript)
+
+    - [Rust](https://github.com/kagisearch/kagi-openapi-rust)
+
+
+    If you have a language you would like to use and it's not in the list, send
+    us a message and we will add it to the list if it is supported. Or you can
+    use the [spec](https://kagi.redocly.app/_spec/openapi.yaml?download) to
+    build your own custom library.
+
+
+    In the future we will most likely offer more crafted API wrappers and
+    spotlight clients and applications built by our community - feel free to
+    send them to us!
+
+
+    ### MCP
+
+
+    We offer a hosted MCP server at: https://mcp.kagi.com/mcp
+
+
+    At this time, we do not support setup via OAuth2 flow, but this is on our
+    roadmap. You will need to get your [API key from the
+    dashboard](https://kagi.com/api/keys) and plug it into your local client
+    with `Bearer` HTTP authentication.
+
+
+    Here is an example to get started with Claude Code:
+
+
+    ```
+
+    claude mcp add kagi https://mcp.kagi.com/mcp --transport http --header
+    "Authorization: Bearer $(read -sp 'API key: ' k; echo $k)" --scope user
+
+    ```
+
+
+    You can review and contribute to our [MCP server on
+    GitHub](https://github.com/kagisearch/kagimcp/tree/rehan/v1-api)!
+
+
+    ### Support
+
+
+    For bug reports, feature requests, or billing related issues please reach
+    out to [developers@kagi.com](mailto:developers@kagi.com) and we will be
+    happy to assist you.
+
+
+    To help us answer your reports efficiently, please be prepared to provide as
+    much info as you can:
+
+
+    - For bugs, include request trace IDs from the `meta.trace` response field
+    or the `X-Kagi-Trace` response header.
+
+    - If issues are easily reproduced in our
+    [playground](https://kagi.com/api/playground/search), send us a link to the
+    playground - the URL will contain parameters to configure the request so
+    that we can reproduce ourselves.
+
+    - Include any code snippets or precise descriptions of the request you are
+    making, and full samples of the response bodies from the API
+
+    - Include mention of which wrapper you are using if any, or links to
+    relevant application code we can review
+
+    - Include the email address associated with your Kagi login if it is not the
+    one you are emailing from
+
+
+    Thank you!
+
+
+    ### Discord
+
+
+    Join our [Discord](https://kagi.com/discord)! Good for quick questions or
+    chatting about things you've made with our APIs!
+
+
+    In the server you will find the `#api` forum for API related inquiries.
+  license:
+    name: Apache-2.0
+    url: https://www.apache.org/licenses/LICENSE-2.0.html
+  contact:
+    name: API Support
+    email: developers@kagi.com
+paths:
+  /search:
+    post:
+      security:
+        - kagi: []
+      tags:
+        - Search
+      summary: Perform a web search
+      operationId: search
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              description: Used to upload the search query
+              type: object
+              required:
+                - query
+              properties:
+                query:
+                  type: string
+                  description: Search query to run.
+                workflow:
+                  type: string
+                  description: Type of results to return.
+                  default: search
+                  enum:
+                    - search
+                    - images
+                    - videos
+                    - news
+                    - podcasts
+                format:
+                  type: string
+                  description: >-
+                    **(EXPERIMENTAL)** Format to serialize the API response as.
+                    The exact contents and structure of markdown output is still
+                    being worked on - please send your feedback!
+                  default: json
+                  enum:
+                    - json
+                    - markdown
+                lens_id:
+                  type: string
+                  description: >-
+                    Lens to apply to the search. Can be a built-in lens's
+                    identifier or a lens ID as shown on
+                    https://kagi.com/settings/lenses when a lens is set to be
+                    shareable. Can be just the ID portion of the URL
+                    (`https://kagi.com/lenses/ID`) or the full URL.
+                lens:
+                  type: object
+                  description: >-
+                    Inline description of a lens to apply to the search. Options
+                    supplied by the lens take precedence over those supplied by
+                    the user in their search terms (e.g., `site:` operators),
+                    allowing you to restrict the scope of the search to return
+                    more relevant results in specific applications.
+                  properties:
+                    sites_included:
+                      type: array
+                      description: Search only these domains.
+                      items:
+                        description: domains
+                        type: string
+                    sites_excluded:
+                      type: array
+                      description: Exclude these domains from the search.
+                      items:
+                        description: domains
+                        type: string
+                    keywords_included:
+                      type: array
+                      description: Return only results containing these keywords.
+                      items:
+                        description: keywords
+                        type: string
+                    keywords_excluded:
+                      type: array
+                      description: Exclude results containing these keywords.
+                      items:
+                        description: keywords
+                        type: string
+                    file_type:
+                      type: string
+                      description: A specific file type to search for. (e.g., `pdf`)
+                    time_after:
+                      type: string
+                      description: >-
+                        Filters for web pages that have been updated or
+                        published *after* the given date.
+                      format: date
+                    time_before:
+                      type: string
+                      description: >-
+                        Filters for web pages that have been updated or
+                        published *before* the given date.
+                      format: date
+                    time_relative:
+                      type: string
+                      description: >-
+                        Filters for web pages that have been updated or
+                        published in the given interval, relative to today's
+                        date.
+                      enum:
+                        - day
+                        - week
+                        - month
+                    search_region:
+                      type: string
+                      description: >-
+                        Requests results localized to a specific region. Can be
+                        any valid [ISO-3166-1 Alpha-2 country
+                        code](https://en.wikipedia.org/wiki/ISO_3166-1_alpha-2#Officially_assigned_code_elements),
+                        or the special value `no_region`, that will try to get
+                        the most general results possible.
+                timeout:
+                  type: number
+                  minimum: 0.5
+                  maximum: 4
+                  description: >-
+                    Number of seconds to allow for collecting search results.
+                    Lower values will return results more quickly, but may be
+                    lower quality or inconsistent between calls. If omitted,
+                    will use the latest recommended value by Kagi.
+                page:
+                  type: integer
+                  minimum: 1
+                  maximum: 10
+                  description: Page number for paginated results. Must be between 1 and 10.
+                limit:
+                  type: integer
+                  minimum: 1
+                  maximum: 1024
+                  description: >
+                    Maximum number of results to return. Must be between 1 and
+                    1024. 
+
+                    **NOTE:** This does not change the amount of results
+                    requested, it only limits the maximum amount returned. If
+                    omitted, the API always gives you the most results we can
+                    get in a single pass.
+                filters:
+                  type: object
+                  description: >
+                    Filters to apply to search results for more targeted
+                    queries.
+
+
+                    **NOTE:** Any parameter here that overlaps with lenses will
+                    take priority over the lens.
+                  properties:
+                    region:
+                      type: string
+                      description: >-
+                        Filter results to a specific region using an ISO 3166-1
+                        Alpha-2 country code. See
+                        https://help.kagi.com/api/regions for supported codes.
+                    after:
+                      type: string
+                      description: Filter for results published or updated after this date.
+                      format: date
+                    before:
+                      type: string
+                      description: >-
+                        Filter for results published or updated before this
+                        date.
+                      format: date
+                extract:
+                  type: object
+                  description: >
+                    Configuration for extracting page content from search
+                    results. When provided, the API will fetch and extract the
+                    content from the specified number of result pages.
+
+
+                    The resulting page markdown will update the value of the
+                    `snippet` field on the respective result item.
+
+
+                    **NOTE:** Use of this option incurs additional cost, billed
+                    at your account's rate for the Extract API based on the
+                    number of units requested. You will not be charged if there
+                    were no results to extract.
+                  properties:
+                    count:
+                      type: integer
+                      minimum: 1
+                      maximum: 10
+                      description: >-
+                        Number of search results to extract content from. Must
+                        be between 1 and 10.
+                    timeout:
+                      type: number
+                      minimum: 0.5
+                      maximum: 4
+                      description: >-
+                        Timeout in seconds for extraction of each page. If
+                        omitted, uses the default timeout. This time budget is
+                        in addition to the allocated top-level search timeout,
+                        so that you can control both independently.
+                safe_search:
+                  type: boolean
+                  description: >-
+                    Whether safe search is enabled, omitting potentially NSFW
+                    content.
+                  default: true
+                personalizations:
+                  type: object
+                  description: >-
+                    Personalization rules to customize search result ranking.
+                    Allows specifying domain biases and regex-based
+                    replacements.
+                  properties:
+                    domains:
+                      type: array
+                      description: >-
+                        Domain-level personalization rules (maximum 1000 rules).
+                        Each rule can boost or lower the ranking of results from
+                        specific domains.
+                      items:
+                        type: object
+                        required:
+                          - domain
+                          - kind
+                        properties:
+                          domain:
+                            type: string
+                            description: >-
+                              Domain pattern to personalize (e.g.,
+                              "example.com"). Can also be a tld suffix like
+                              ".co.uk".
+                          kind:
+                            type: string
+                            description: Handling mode for this domain pattern
+                            enum:
+                              - block
+                              - lower
+                              - raise
+                              - pin
+                    regexes:
+                      type: array
+                      description: >-
+                        Regex-based personalization rules (maximum 1000 rules,
+                        max 1000 bytes per pattern).
+                      items:
+                        type: object
+                        properties:
+                          regex:
+                            type: string
+                            description: The regex pattern to match.
+                            example: ^https?://(www\.)?reddit\.com.*
+                          replacement:
+                            type: string
+                            description: >-
+                              The replacement string to apply when the pattern
+                              matches. Will preserve paths and query parameters
+                              if not overwritten. You can refer to capture
+                              groups with "$1", "$2", etc.
+                            example: https://old.reddit.com
+            examples:
+              basicSearch:
+                summary: Basic search query
+                description: Simple search showing how to use the search API
+                value:
+                  query: steve jobs
+                  workflow: search
+              snapSearch:
+                summary: Search with snaps
+                description: Snaps are supported for quickly searching in individual sites
+                value:
+                  query: '@r headphones'
+                  workflow: search
+              imageSearch:
+                summary: Search just for images
+                description: >-
+                  Searching just for images, or other categories is supported
+                  using the workflow parameter
+                value:
+                  query: doggo
+                  workflow: images
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                description: A response with a description and results references used
+                type: object
+                properties:
+                  meta:
+                    $ref: '#/components/schemas/meta'
+                  data:
+                    description: >-
+                      Holds all the search results for the query specified. As
+                      results have different types and sources, they are
+                      separated into different fields within this object. For
+                      example image results are stored under `data.image` while
+                      news results are stored under `data.news`. All results
+                      will have the same main structure, but additional data
+                      might be stored under the `data.{name}[].props` path.
+                      Please look at each different type of result for more
+                      information about this.
+                    type: object
+                    properties:
+                      search:
+                        description: >-
+                          Contains all search results for html pages or
+                          websites.
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/searchResult'
+                      image:
+                        description: Contains all search results for images.
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/searchResult'
+                      video:
+                        description: Contains all search results for videos.
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/searchResult'
+                      podcast:
+                        description: Contains all search results for podcasts.
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/searchResult'
+                      podcast_creator:
+                        description: Contains all search results for creators of podcasts.
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/searchResult'
+                      news:
+                        description: Contains all search results for news articles.
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/searchResult'
+                      adjacent_question:
+                        description: >-
+                          Contains results that are obtained by searching for
+                          slightly different queries. These questions are stored
+                          under the `props.question` path.
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/searchResult'
+                      direct_answer:
+                        description: >-
+                          If the search query was a math equation, or unit
+                          conversions, things that can be answered quickly, the
+                          result will be in here.
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/searchResult'
+                      interesting_news:
+                        description: >-
+                          Contains news results from publishers collected and
+                          stored in Kagi's news index.
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/searchResult'
+                      interesting_finds:
+                        description: >-
+                          Contains small web results from publishers collected
+                          and stored in Kagi's small web index.
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/searchResult'
+                      infobox:
+                        description: >-
+                          Contains detailed summary and tabulated information
+                          about a person, place, or thing.
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/searchResult'
+                      code:
+                        description: >-
+                          Contains all search results that link to code
+                          resources or repositories.
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/searchResult'
+                      package_tracking:
+                        description: >-
+                          If the search query was a package tracking number, the
+                          correct package tracking website should be present in
+                          this collection.
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/searchResult'
+                      public_records:
+                        description: >-
+                          Contains all search results for public records, such
+                          as government documents or public court records.
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/searchResult'
+                      weather:
+                        description: Contains all search results for the current weather.
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/searchResult'
+                      related_search:
+                        description: >-
+                          Contains a list of searches that are related to the
+                          current search, and may help narrow down the results.
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/searchResult'
+                      listicle:
+                        description: >-
+                          Contains all search results that are lists of things.
+                          Results with titles like "5 things you didn't know
+                          about...", or "10 of the best headphones".
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/searchResult'
+                      web_archive:
+                        description: >-
+                          Contains all search results for archived websites that
+                          may not be available anymore
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/searchResult'
+              examples:
+                default:
+                  summary: Response with example search objects
+                  value:
+                    meta:
+                      trace: 97383064af92b8980b9b4d419b4ce4a9
+                      ms: 314
+                      node: us-east4
+                    data:
+                      search:
+                        - url: https://en.wikipedia.org/wiki/Steve_Jobs
+                          title: Steve Jobs - Wikipedia
+                          snippet: >-
+                            Steve Jobs · Pioneer of the personal computer
+                            revolution with Steve Wozniak · Co-creator of the
+                            Apple II, Macintosh, iPod, iPhone, iPad, and first
+                            Apple Stores. ... Steven Paul Jobs (February 24,
+                            1955 – October 5, 2011) was an American businessman,
+                            inventor, [2] and investor. A pioneer of the
+                            personal computer revolution of the 1970s and 1980s,
+                            Jobs co-founded Apple Inc. with his early business
+                            partner Steve Wozniak as Apple Computer Company in
+                            1976. After the company&#39;s board of directors
+                            fired him in 1985, he founded NeXT the same year and
+                            purchased ... ... Steven Paul Jobs was an American
+                            businessman, inventor, and investor. A pioneer of
+                            the personal computer revolution of the 1970s and
+                            1980s, Jobs co-founded Apple Inc. with his early
+                            business partner Steve Wozniak as Apple Computer
+                            Company in 1976. After the company&#39;s board of
+                            directors fired him in 1985, he founded NeXT the
+                            same year and purchased Pixar in 1986, becoming its
+                            chairman and majority shareholder until 2007.
+                          time: '2012-02-23T07:00:59Z'
+                          image:
+                            url: >-
+                              https://p.kagi.com/proxy/th?c=fl5H5doFdZVT3TYbM87OdIZHFmzy_9fVEKrvFI-hPjn9NSJulYkorNApo0h-QjOIcaPzoLVMmbuzEkIM-iPgqNDDIn0YpMaotS5c51iUmF37FaWcxqp-HUqn_2lndJOU
+                          props:
+                            language: en
+                            language_probability: 0.9653164148330688
+                            group_id: en.wikipedia.org
+                        - url: https://en.wikipedia.org/wiki/Steve_Jobs_(book)
+                          title: Steve Jobs (book) - Wikipedia
+                          snippet: >-
+                            Steve Jobs is the authorized self-titled biography
+                            of American business magnate and Apple co-founder
+                            Steve Jobs. The book was written at the request of
+                            Jobs by Walter Isaacson, a former executive at CNN
+                            and Time who had previously written best-selling
+                            biographies of Benjamin Franklin and Albert
+                            Einstein.
+                          time: '2011-12-23T20:19:37Z'
+                          props:
+                            language: en
+                            language_probability: 0.9680122137069702
+                            group_id: en.wikipedia.org
+                        - url: >-
+                            https://en.wikipedia.org/wiki/List_of_depictions_of_Steve_Jobs
+                          title: List of depictions of Steve Jobs - Wikipedia
+                          snippet: >-
+                            Steve Jobs was an American pioneer of the personal
+                            computer revolution of the 1970s who, along with
+                            Steve Wozniak and Ronald Wayne, founded Apple
+                            Computer. Before and after his death in 2011, Jobs
+                            was known as a counter-culture figure within the
+                            computer industry, and as a perfectionist who could
+                            be demanding of his colleagues and
+                            employees—sometimes to the point of cruelty.
+                          time: '2015-01-21T03:50:39Z'
+                          props:
+                            language: en
+                            language_probability: 0.9821324348449707
+                            group_id: en.wikipedia.org
+                        - url: https://book.stevejobsarchive.com/
+                          title: 'Steve Jobs: Make Something Wonderful'
+                          snippet: >-
+                            Read Steve Jobs in his own words in this free online
+                            book featuring speeches, quotes, emails, and
+                            photographs from the Steve Jobs Archive. ... Steve
+                            Jobs in his own words. There’s lots of ways to be,
+                            as a person. And some people express their deep
+                            appreciation in different ways.A passport for Steven
+                            Paul Jobs issued on May 11, 1973, featuring a
+                            stamped photo of him with shaggy hair.
+                          time: '2023-04-11T10:22:28Z'
+                          props:
+                            language: en
+                            language_probability: 0.8534004092216492
+                            group_id: book.stevejobsarchive.com
+                        - url: https://www.apple.com/stevejobs/
+                          title: Remembering Steve Jobs - Apple
+                          snippet: >-
+                            Steven (Einstein) Jobs. More then most losses from
+                            the list of extraordinary Change Agents, the loss of
+                            Steve Jobs is a massive void. An icon has passed,
+                            yet ... ... Apple has lost a visionary and creative
+                            genius, and the world has lost an amazing human
+                            being. Those of us who have been fortunate enough to
+                            know and work with Steve have lost a dear friend and
+                            an inspiring mentor. Steve leaves behind a company
+                            that only he could have built, and his spirit will
+                            forever be the foundation of Apple.
+                          props:
+                            language: en
+                            group_id: apple.com
+                        - url: https://www.britannica.com/money/Steve-Jobs
+                          title: >-
+                            Steve Jobs | Biography, Education, Apple, &amp;
+                            Facts | Britannica Money
+                          snippet: >-
+                            Learn about Steve Jobs, the cofounder of Apple and a
+                            visionary of the personal computer era. Explore his
+                            life, education, achievements, products, and death
+                            from Britannica Money. ... Steve Jobs was born in
+                            1955 and raised by adoptive parents in Cupertino,
+                            California. Though he was interested in engineering,
+                            his passions as a ...
+                          time: '2026-05-17T20:22:53Z'
+                          image:
+                            url: >-
+                              https://p.kagi.com/proxy/th?c=fl5H5doFdZVT3TYbM87OdJA1PBlTyqKv_ODlqaknlO5oL8YHQhL7q8l3K_p3xWeRCdE-rDjFAzXPqbV6ka_TrjerKI5b6XDilJHtuZWmVTzCFSWy5X8wZE0-QmCR3Mvx
+                          props:
+                            ai_generated: false
+                            paywalled: true
+                            language: en
+                            language_probability: 0.9891567230224609
+                            group_id: britannica.com
+                        - url: https://www.imdb.com/title/tt2080374/
+                          title: Steve Jobs (2015) - IMDb
+                          snippet: >-
+                            Steve Jobs takes us behind the scenes of the digital
+                            revolution, to paint a portrait of the man at its
+                            epicenter. The story unfolds backstage at three ...
+                          props:
+                            language: en
+                            language_probability: 0.8846994638442993
+                            group_id: imdb.com
+                        - url: https://stevejobsarchive.com/
+                          title: The Steve Jobs Archive
+                          snippet: >-
+                            The Steve Jobs Archive is the authoritative home for
+                            Steve&#39;s story and a resource to help new
+                            generations make their own mark. ... The Steve Jobs
+                            Archive is the authoritative home for Steve’s story
+                            and a resource to help new generations make their
+                            own mark.Steve Jobs stands behind a lectern and
+                            smiles at the crowd off-camera. He wears a black
+                            graduation gown with red regalia.
+                          time: '2012-06-23T12:59:35Z'
+                          props:
+                            language: en
+                            language_probability: 0.8303269743919373
+                            group_id: stevejobsarchive.com
+                        - url: >-
+                            https://www.businessnewsdaily.com/4195-business-profile-steve-jobs.html
+                          title: Steve Jobs Biography - Business News Daily
+                          snippet: >-
+                            Apple co-founder Steve Jobs revolutionized the
+                            computer industry. Read Steve Jobs&#39; biography,
+                            quotes and an analysis of his leadership style. ...
+                            Steve Jobs was a computer designer, executive and
+                            innovator, as well as an all-around role model for
+                            many people in their professional and personal
+                            lives. As the co-founder of Apple Computers and the
+                            former chairman of Pixar Animation Studios, he
+                            revolutionized the computer and animation
+                            industries, amassing a fortune worth $10.2 billion
+                            at the time of his death. Jobs died at age 56 on
+                            Oct.
+                          time: '2012-08-11T15:50:04Z'
+                          image:
+                            url: >-
+                              https://p.kagi.com/proxy/th?c=fl5H5doFdZVT3TYbM87OdAwFSMzRrkJ4pC49w7dSH_odnud49o4xbo5DndwrXKrHgB3BGMmLQBPUdClIjim1iU4LwjZjlF1c_YHRFGHSSl6Y_FS-2lIi-tpMFpfR7K1Y
+                          props:
+                            language: en
+                            language_probability: 0.9785066246986389
+                            group_id: businessnewsdaily.com
+                        - url: >-
+                            https://www.investopedia.com/articles/fundamental-analysis/12/steve-jobs-apple-story.asp
+                          title: >-
+                            Steve Jobs: From Apple&#39;s Founding to a Tech
+                            Revolution
+                          snippet: >-
+                            Explore Steve Jobs&#39; journey from co-founding
+                            Apple to transforming tech with innovations like the
+                            iPhone. Learn key lessons from his visionary
+                            leadership.
+                          image:
+                            url: >-
+                              https://p.kagi.com/proxy/th?c=fl5H5doFdZVT3TYbM87OdEOFoW6yTQmMA8oZwr0B1kEm4RyCFnTxXn6ctKHT9gZHVItUlx789BRJV7i4ZxpeLte5KlOHg7tkuR9Bzz0QNTs65N-IksuXCO8puFPhcGgL
+                          props:
+                            language: en
+                            group_id: investopedia.com
+                        - url: >-
+                            https://www.ebsco.com/research-starters/biography/steve-jobs
+                          title: >-
+                            Steve Jobs | Biography | Research Starters | EBSCO
+                            Research
+                          snippet: >-
+                            Steve Jobs was a prominent figure in the technology
+                            and entertainment industries, known for his role as
+                            the co-founder and CEO of Apple Inc. and Pixar
+                            Animation Studios. Born on February 24, 1955, in San
+                            Francisco, California, he was adopted shortly after
+                            birth and exhibited a natural curiosity and
+                            intelligence from an early age.
+                          time: '2025-03-07T00:11:48Z'
+                          props:
+                            language: en
+                            language_probability: 0.9734721183776855
+                            group_id: ebsco.com
+                        - url: >-
+                            https://www.kennedy-center.org/wno/home/2024-2025/the-revolution-of-steve-jobs/
+                          title: The (R)evolution of Steve Jobs - Kennedy Center
+                          snippet: >-
+                            Free with The (R)evolution of Steve Jobs ticket,
+                            starting 1 hour before the performance and lasting
+                            25–30 minutes. Stay after for a Post-Performance
+                            Artist Q&amp;A Don’t miss your opportunity to engage
+                            directly with our artists and share your thoughts on
+                            the experience you just had!
+                          image:
+                            url: >-
+                              https://p.kagi.com/proxy/th?c=fl5H5doFdZVT3TYbM87OdKDtBQAZo9zAJWd9V6IZfVyGY9zZ9yhfhMINDOL_r2AGayPiOMv_yoYyy7v7PTM5WB_98fpPgew-F9gwZ8t5OUV3tkEl0qjQGYnSzW84xrlk
+                          props:
+                            language: en
+                            group_id: kennedy-center.org
+                        - url: >-
+                            https://www.jagranjosh.com/us/explainers/steve-jobs-biography-1860000806
+                          title: >-
+                            Steve Jobs Biography: Age, Early Life, Career, Net
+                            Worth &amp; Interesting ...
+                          snippet: >-
+                            Discover Steve Jobs&#39; biography, age, early life,
+                            education, career milestones, net worth, and
+                            inspiring facts about Apple’s visionary co-founder.
+                          image:
+                            url: >-
+                              https://p.kagi.com/proxy/th?c=fl5H5doFdZVT3TYbM87OdGKM1ybo7xhMJr04ewgc8LctYaUAkgdzZheRycFnMpuZqF146ottCgTdbR6SPqRBLT8bNmhq3H0FgQJ4fjhOlGWGPD9c3Jb5PyLahLXN0MOE
+                          props:
+                            language: en
+                            group_id: jagranjosh.com
+                        - url: https://www.gettyimages.com/photos/steve-jobs
+                          title: >-
+                            11,671 Steve Jobs Photos &amp; High Res Pictures -
+                            Getty Images
+                          snippet: >-
+                            Browse 11,671 authentic steve jobs photos, pictures,
+                            and images, or explore apple or bill gates to find
+                            the right picture.Apple CEO Steve Jobs Delivers
+                            Opening Keynote At Macworld. American businessman
+                            Steve Jobs , Chairman of Apple Computers, and John
+                            Sculley, Apple&#39;s president, pose with the new
+                            Macintosh personal computer
+                          time: '2015-06-23T18:38:56Z'
+                          props:
+                            group_id: gettyimages.com
+                        - url: >-
+                            https://www.shutterstock.com/search/steve-jobs?image_type=photo
+                          title: >-
+                            Steve Jobs: Over 3,214 Royalty-Free Licensable
+                            Stock... | Shutterstock
+                          snippet: >-
+                            A tribute to Steve Jobs, highlighting his impact on
+                            technology, innovation, and design with the iconic
+                            Apple smartphone and the Apple logo.PRAGUE, CZECH
+                            REPUBLIC - AUG 6, 2017: Think Different slogan and
+                            young Steve Jobs photo, Apple museum in Prague.
+                            Editorial Stock Photo.
+                          time: '2019-01-17T09:01:12Z'
+                          props:
+                            group_id: shutterstock.com
+                        - url: >-
+                            https://www.inc.com/larry-kim/43-surprising-facts-about-steve-jobs.html
+                          title: 43 Surprising Facts About Steve Jobs
+                          snippet: >-
+                            Learn about the real Steve Jobs with these 43 facts.
+                            Steve Jobs was adopted shortly after being born.
+                            Jobs was, biologically, half Arab. His biological
+                            father was Syrian and his mother was American.
+                            Jobs’s biological parents had one mandate–that Jobs
+                            be adopted by two college-educated people.
+                          time: '2015-03-25T21:47:43Z'
+                          props:
+                            paywalled: true
+                            language: en
+                            language_probability: 0.9832644462585449
+                            group_id: inc.com
+                        - url: https://www.azquotes.com/author/7449-Steve_Jobs
+                          title: TOP 25 QUOTES BY STEVE JOBS (of 586) | A-Z Quotes
+                          snippet: >-
+                            Discover Steve Jobs famous and rare quotes. Share
+                            inspirational quotes by Steve Jobs and quotations
+                            about technology and innovation.
+                          time: '2014-05-25T15:46:00Z'
+                          props:
+                            group_id: azquotes.com
+                        - url: >-
+                            https://www.linkedin.com/pulse/founder-apple-inc-steve-jobs-web-design-media
+                          title: FOUNDER OF APPLE Inc. (STEVE JOBS)
+                          snippet: >-
+                            &quot;Steve&quot; Jobs (February 24, 1955 – October
+                            5, 2011) was an American entrepreneur, businessman,
+                            inventor, and industrial designer.According to Apple
+                            cofounder Steve Wozniak &quot;Steve didn&#39;t ever
+                            code. He wasn&#39;t an engineer and he didn&#39;t do
+                            any original design...&quot; Daniel Kottke, one of
+                            Apple&#39;s earliest employees and a college friend
+                            of Jobs&#39;s, stated that &quot;Between Woz and
+                            Jobs, Woz was the innovator, the inventor.
+                          time: '2024-12-13T00:56:55Z'
+                          props:
+                            ai_generated: false
+                            language: en
+                            language_probability: 0.937929630279541
+                            group_id: linkedin.com
+                        - url: >-
+                            https://www.linkedin.com/pulse/genius-behind-apple-steve-jobs-success-story-jegadeesh-sathaiya
+                          title: >-
+                            The Genius Behind Apple: The Steve Jobs Success
+                            Story
+                          snippet: >-
+                            Steve Jobs was born on February 24, 1955, in San
+                            Francisco, California. He was adopted by Paul and
+                            Clara Jobs, who nurtured his early interest in
+                            electronics. Jobs&#39; fascination with technology
+                            led him to tinker with gadgets in his garage, a
+                            place that would later become the birthplace of
+                            Apple. Founding Apple Computer with Steve Wozniak.
+                          time: '2023-10-01T22:35:11Z'
+                          props:
+                            ai_generated: false
+                            language: en
+                            language_probability: 0.9839490652084351
+                            group_id: linkedin.com
+                        - url: >-
+                            https://www.linkedin.com/pulse/steve-jobs-philosophy-achieving-success-fulfillment-through-vinluan-e7q6e
+                          title: >-
+                            Steve Jobs&#39; Philosophy: Achieving Success and
+                            Fulfillment through...
+                          snippet: >-
+                            Steve Jobs, the co-founder of Apple Inc., is
+                            celebrated not only for his groundbreaking
+                            innovations but also for his profound philosophy on
+                            work, creativity, and personal growth. His visionary
+                            thinking and approach to life have inspired millions
+                            around the world. This article delves into Jobs&#39;
+                            philosophy, offering valuable insights into
+                            achieving success and fulfillment.
+                          time: '2024-05-31T00:50:06Z'
+                          props:
+                            ai_generated: false
+                            language: en
+                            language_probability: 0.951023519039154
+                            group_id: linkedin.com
+                        - url: >-
+                            https://news.google.com/topics/CAAqJQgKIh9DQkFTRVFvSUwyMHZNRFo1TTNJU0JXVnVMVlZUS0FBUAE?hl=en-US&gl=US&ceid=US%3Aen
+                          title: Google News - Steve Jobs - Latest
+                          snippet: >-
+                            The glorious return of Steve Jobs. Mar 30. By David
+                            Pierce. New York Magazine. More. The Mystery of
+                            Steve Jobs. 27 days ago. By David Pogue.Corning CEO
+                            says Steve Jobs pressured him into making all the
+                            screens for the first iPhone: ‘Do you know what your
+                            biggest problem is? You’re afraid’.
+                          time: '2018-05-26T23:55:43Z'
+                          props:
+                            language: en
+                            language_probability: 0.8321699500083923
+                            group_id: news.google.com
+                        - url: >-
+                            https://in.pinterest.com/ideas/steve-jobs/942977635344/
+                          title: Find and save ideas about steve jobs on Pinterest.
+                          snippet: >-
+                            Steve jobs photo, Steve jobs, Steve jobs apple. The
+                            First Iphone.Steve Jobs Glasses Wallpaper. Black And
+                            White Einstein Poster.
+                          time: '2014-12-26T14:12:27Z'
+                          props:
+                            group_id: in.pinterest.com
+                        - url: https://kids.kiddle.co/Steve_Jobs
+                          title: Steve Jobs Facts for Kids
+                          snippet: >-
+                            The house where Steve Jobs grew up in Los Altos,
+                            California, was declared a historic site in 2013. It
+                            was the first location of Apple Computer. Jobs
+                            usually wore a black long-sleeved mock turtleneck,
+                            Levi&#39;s 501 blue jeans, and New Balance 991
+                            sneakers. Even though he was a billionaire, Jobs
+                            said that most of his money would not go to his
+                            children.
+                          time: '2017-08-21T14:45:33Z'
+                          props:
+                            language: en
+                            language_probability: 0.9688087701797485
+                            group_id: kids.kiddle.co
+                        - url: >-
+                            https://openlab.citytech.cuny.edu/?get_group_doc=4339/1387685350-stevejobs.pdf
+                          title: steve jobs
+                          snippet: >-
+                            Steve Jobs’ life. • 1955, Steven Paul was born in
+                            San Francisco, the son of Abdulfattah Jandali and
+                            Joanne Schieble. He is quickly adopted by Paul and
+                            Clara Jobs. • 1973, Steve spends the fall semester
+                            at Reed College, Oregon, then drops out. He will
+                            stay on campus and attend the classes that interest
+                            him for a while, then move to a hippie commune.
+                          time: '2015-11-16T06:50:57Z'
+                          props:
+                            language: en
+                            language_probability: 0.9463335275650024
+                            group_id: citytech.cuny.edu
+                        - url: https://www.theceo.in/leaders/steve-jobs
+                          title: Steve Jobs
+                          snippet: >-
+                            Steve Jobs, born on February 24, 1955, in San
+                            Francisco, California, was a transformative figure
+                            in the world of technology and business. As the
+                            co-founder of Apple Inc., Jobs played a pivotal role
+                            in shaping the personal computer era,
+                            revolutionising multiple industries, and leaving an
+                            indelible mark on the world.
+                          time: '2023-10-17T11:47:31Z'
+                          props:
+                            language: en
+                            language_probability: 0.9521870613098145
+                            group_id: theceo.in
+                        - url: https://allaboutstevejobs.com/
+                          title: Home | all about Steve Jobs.com
+                          snippet: >-
+                            This website is a repository of all things Steve
+                            Jobs — biography, pictures, videos of his keynotes
+                            and demos, quotes, interviews — you name it ...
+                          props:
+                            language: en
+                            language_probability: 0.8613680005073547
+                            group_id: allaboutstevejobs.com
+                        - url: >-
+                            https://www.entrepreneur.com/growing-a-business/who-was-steve-jobs-see-the-apple-founders-career-and-more/197538
+                          title: Steve Jobs Biography - Entrepreneur
+                          snippet: >-
+                            Ever wondered how Steve Jobs was so successful?
+                            Discover the answers in this comprehensive overview
+                            of his life, career and death. ... Steven Paul Jobs
+                            was an American business owner, entrepreneur,
+                            investor and media proprietor. He was best known for
+                            co-founding and leading Apple.
+                          image:
+                            url: >-
+                              https://p.kagi.com/proxy/th?c=fl5H5doFdZVT3TYbM87OdKDtBQAZo9zAJWd9V6IZfVxB7YH0jkBorA28LPLnXZnim41K06rGNYyf-IJ9rbXpTHR-LiG2W8CZXjfpQ8WXIzx1yt05hzWts9gLAMx7SB6u
+                          props:
+                            language: en
+                            language_probability: 0.9691977500915527
+                            group_id: entrepreneur.com
+                        - url: >-
+                            https://www.biography.com/business-leaders/steve-jobs
+                          title: 'Steve Jobs: Biography, Apple Cofounder, Entrepreneur'
+                          snippet: >-
+                            In 1976, Steve Jobs cofounded Apple with Steve
+                            Wozniak. Learn about the entrepreneur’s career, net
+                            worth, parents, wife, children, education, and death
+                            in 2011.
+                          image:
+                            url: >-
+                              https://p.kagi.com/proxy/th?c=fl5H5doFdZVT3TYbM87OdJA1PBlTyqKv_ODlqaknlO6iX20VQ-czDfhMg6yFCtd7LV4EMf6ska_qsPswxlDujOMDMYY1E-t8ObJKuyQ_0BivoCmMrJjcqDuk8rF9FUHp
+                          props:
+                            language: en
+                            ai_generated: true
+                            group_id: biography.com
+                        - url: >-
+                            https://www.thoughtco.com/steve-jobs-biography-1991928
+                          title: >-
+                            Biography of Steve Jobs, Co-Founder of Apple
+                            Computers
+                          snippet: >-
+                            Steve Jobs was one of the founders of Apple
+                            Computers and a major pioneer in the computer
+                            industry. Learn about his impact on today&#39;s
+                            technology.
+                          image:
+                            url: >-
+                              https://p.kagi.com/proxy/th?c=fl5H5doFdZVT3TYbM87OdLgft05lwQj3-URIys8q9rQpLz7UA1YsTJu0rdpa7pIcInKUopnvOCdBZ_yAqJV1kTC-NE4A3mAIwafQdeWmL-CNkJlzui8YGMrQDVmQ5W2S
+                          props:
+                            language: en
+                            group_id: thoughtco.com
+                        - url: >-
+                            https://www.theguardian.com/technology/2011/oct/06/steve-jobs-obituary
+                          title: Steve Jobs obituary | Steve Jobs | The Guardian
+                          snippet: >-
+                            Steve Jobs, who has died aged 56 of pancreatic
+                            cancer, made an unprecedented impact on the
+                            world&#39;s consumer electronics markets with a
+                            string of successful products, including the iPod
+                            media player, iPhone smartphone and iPad tablet
+                            computer.Steve Jobs, co-founder and chairman of
+                            Apple, has died aged 56. Photograph: Paul Sakuma/AP.
+                            The iPod, iPhone and iPad were all relatively late
+                            to market, expensive, and, in their initial
+                            versions, lacked important features.
+                          time: '2011-10-06T04:00:00Z'
+                          props:
+                            language: en
+                            language_probability: 0.9655269980430603
+                            group_id: theguardian.com
+                        - url: >-
+                            https://www.theguardian.com/technology/2011/oct/06/steve-jobs-timeline-apple
+                          title: >-
+                            Steve Jobs: from parents&#39; garage to world power
+                            | The Guardian
+                          snippet: >-
+                            1955 Steve Jobs is born in San Francisco on 24
+                            February 1955, and adopted by Paul and Clara Jobs of
+                            Mountain View, California. 1974 He takes a job at
+                            videogame company Atari Inc but resigns after a few
+                            months to travel to India. 1975 Jobs and his friend
+                            Steve Wozniak build a prototype computer in the
+                            garage of Jobs&#39; parents.
+                          time: '2011-10-06T04:00:00Z'
+                          props:
+                            language: en
+                            language_probability: 0.936636745929718
+                            group_id: theguardian.com
+                        - url: >-
+                            https://www.theguardian.com/technology/2011/oct/06/steve-jobs-apple-cofounder-dies
+                          title: >-
+                            Steve Jobs, Apple co-founder, dies at 56 | Steve
+                            Jobs | The Guardian
+                          snippet: >-
+                            Steve Jobs, billionaire co-founder of Apple and the
+                            mastermind behind an empire of products that
+                            revolutionised computing, telephony and the music
+                            industry, has died in California at the age of 56.
+                            Jobs stepped down in August as chief executive of
+                            the company he helped set up in 1976, citing
+                            illness.
+                          time: '2011-10-06T04:00:00Z'
+                          props:
+                            language: en
+                            language_probability: 0.9619073271751404
+                            group_id: theguardian.com
+                        - url: >-
+                            https://www.thefamouspeople.com/profiles/steve-paul-jobs-2904.php
+                          title: >-
+                            Steve Jobs Biography - Facts, Childhood, Family Life
+                            &amp; Achievements
+                          snippet: >-
+                            Steve Jobs asked William Hewlett, co-founder of
+                            Hewlett-Packard for some parts to complete a school
+                            project when he was 12. Impressed, Hewlett offered
+                            Jobs an internship at his company. Jobs and his
+                            friend Steve Wozniak built and sold digital blue
+                            boxes for hacking telephone systems before they
+                            started Apple.
+                          time: '2013-10-01T02:22:48Z'
+                          props:
+                            language: en
+                            language_probability: 0.9485479593276978
+                            group_id: thefamouspeople.com
+                        - url: >-
+                            https://www.mentalfloss.com/technology/computers/steve-jobs-apple-facts
+                          title: 10 Fascinating Facts About Steve Jobs
+                          snippet: >-
+                            Jobs co-founded Apple in 1976, was forced out of the
+                            company in 1985, and returned as CEO in 1996. He
+                            continued to be the face of the brand until his
+                            death from neuroendocrine cancer in 2011. Without
+                            Jobs, the ubiquitous technology of the modern world
+                            might look very different, and the man behind the
+                            machine was a fascinatingly complex figure. Here are
+                            some facts about Steve Jobs you might not have
+                            known.
+                          time: '2021-02-25T19:40:21Z'
+                          props:
+                            language: en
+                            language_probability: 0.9746167063713074
+                            group_id: mentalfloss.com
+                      adjacent_question:
+                        - url: https://pmc.ncbi.nlm.nih.gov/articles/PMC4924574/
+                          title: >-
+                            What can we learn from Steve Jobs about
+                            complementary and ... - PMC
+                          snippet: >-
+                            The untimely death of Steve Jobs from pancreatic
+                            cancer at the age of 56 in October 2011 was highly
+                            publicized (Kane and Fowler, 2011; Markoff, 2011).
+                          props:
+                            question: What caused Steve Jobs to pass away?
+                            language: en
+                            language_probability: 0.9402046799659729
+                      video:
+                        - url: https://www.youtube.com/watch?v=SCTHVKP0kmA
+                          title: Steve Jobs - Founder of Apple Documentary - YouTube
+                          snippet: >-
+                            Discover the unvarnished story of Steve Jobs, the
+                            visionary entrepreneur who revolutionized the world
+                            with Apple but often destroyed the ...
+                          time: '2026-01-10T00:00:00Z'
+                          props:
+                            language: en
+                            language_probability: 0.8305477499961853
+                            group_id: youtube.com
+                        - url: https://www.youtube.com/watch?v=Tuw8hxrFBH8
+                          title: >-
+                            One of the Greatest Speeches Ever | Steve Jobs -
+                            YouTube
+                          snippet: >-
+                            Steve Jobs: The Exclusive Biography -
+                            https://amzn.to/3zKeTM6Steve Jobs delivers an
+                            inspirational speech. Listen to the end for the most
+                            life changing quote ...
+                          image:
+                            url: >-
+                              https://p.kagi.com/proxy/th?c=fl5H5doFdZVT3TYbM87OdHDyYlO9TIUIGNr_7c55vcUBKaVvsRc-Ln3kVpLN28FvUamlIQSOmUN7-ZXSLvsD0wf-_AqNL_zayaC9dTqQSZAyplfnO0BUIKUEEwMhqfcH
+                          props:
+                            language: en
+                            group_id: youtube.com
+                        - url: https://www.youtube.com/watch?v=kYfNvmF0Bqw
+                          title: Steve Jobs Secrets of Life - YouTube
+                          snippet: >-
+                            In 1994, the Santa Clara Valley Historical
+                            Association interviewed Steve Jobs. What he said
+                            during this unscripted film interview is remarkable.
+                            In this foot...
+                          time: '2011-10-06T04:00:00Z'
+                          props:
+                            language: en
+                            language_probability: 0.8776662945747375
+                            group_id: youtube.com
+                        - url: https://www.youtube.com/watch?v=s1dR0ooLyDo
+                          title: Steve Jobs Full Documentary On His Entire Life
+                          time: '2016-04-17T19:33:45Z'
+                          props:
+                            group_id: youtube.com
+                        - url: https://www.youtube.com/watch?v=s4pVFLUlx8g
+                          title: History of Steve Jobs (Full Documentary) - YouTube
+                          snippet: >-
+                            Jobs was one of the most innovative and influential
+                            entrepreneurs of our time. He left a legacy that
+                            will be marveled over and studied for decades.
+                          time: '2021-03-17T23:22:12Z'
+                          props:
+                            language: en
+                            language_probability: 0.9413296580314636
+                            group_id: youtube.com
+                            text/markdown:
+                              schema:
+                                type: string
+                                description: >-
+                                  Plain markdown search results without JSON
+                                  wrapper
+        '400':
+          description: Invalid request parameters
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/errorEnvelope'
+        '401':
+          $ref: '#/components/responses/unauthorized'
+        '403':
+          description: Forbidden - IP address not authorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/errorEnvelope'
+        '429':
+          description: Rate limited or usage limit exhausted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/errorEnvelope'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/errorEnvelope'
+  /extract:
+    post:
+      security:
+        - kagi: []
+      tags:
+        - Extract
+      summary: Extract page content as markdown from URLs
+      description: >
+        Extracts markdown content from up to 10 HTTP(s) URLs. Each URL is
+        processed
+
+        and the extracted content is returned in the response.
+      operationId: extractContent
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/extractRequest'
+            examples:
+              basicExtract:
+                summary: Extract from multiple URLs
+                description: Request to extract content from up to 10 web pages
+                value:
+                  pages:
+                    - url: https://example.com/article1
+                    - url: https://example.com/article2
+                  timeout: 1.337
+                  format: json
+      responses:
+        '200':
+          description: Successful extraction
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/extractResponse'
+              examples:
+                default:
+                  summary: Successful extraction response
+                  value:
+                    meta:
+                      trace: abc123def456
+                      ms: 1250
+                      node: us-east-1
+                    data:
+                      - url: https://example.com/article
+                        markdown: |-
+                          # Article Title
+
+                          This is the extracted content...
+            text/markdown:
+              schema:
+                type: string
+                description: Plain markdown extracted content without JSON wrapper
+        '400':
+          description: Invalid request parameters
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/errorEnvelope'
+        '401':
+          $ref: '#/components/responses/unauthorized'
+        '403':
+          description: Forbidden - IP address not authorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/errorEnvelope'
+        '429':
+          description: Rate limited or usage limit exhausted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/errorEnvelope'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/errorEnvelope'
+components:
+  securitySchemes:
+    kagi:
+      type: http
+      scheme: bearer
+      description: Kagi API key from https://kagi.com/api/keys
+  schemas:
+    meta:
+      description: >-
+        This object is subject to change as it is provided for debugging
+        purposes. Fields may be added or removed as required. Don't build any
+        hard dependancies on any of this data.
+      type: object
+      properties:
+        trace:
+          type: string
+          description: >-
+            Trace ID that can be used to debug individual API requests. Provide
+            this, if needed, when contacting Kagi support.
+        node:
+          type: string
+          description: The hostname of the node that fulfilled the request.
+        ms:
+          type: integer
+          description: >-
+            how long the request took to fulfill, excluding round trip to the
+            client.
+      additionalProperties: true
+    searchResult:
+      description: A search result that fulfills the query sent to the kagi API
+      type: object
+      required:
+        - url
+        - title
+      properties:
+        url:
+          description: >-
+            The location of the result. This is the direct URL to the resource
+            that matches the query
+          type: string
+          example: https://en.wikipedia.org/wiki/Steve_Jobs
+        title:
+          description: >-
+            This is the title of the resource. For HTML documents, it reflects
+            `<title>`. For videos, it is the name that would be displayed on the
+            video site.
+          type: string
+          example: Steve Jobs - Wikipedia
+        snippet:
+          description: A short summary of the contents of the resource
+          type: string
+          example: >-
+            Steven Paul Jobs (February 24, 1955 – October 5, 2011) was an
+            American businessman, inventor, and investor best known for
+            co-founding the ...
+        time:
+          description: The date when the resource was created or last updated.
+          type: string
+          example: '2024-11-29T03:54:26Z'
+        image:
+          description: >-
+            An image that goes with the main resource. It could be a video's
+            thumbnail or an HTML document's main image.
+          type: object
+          required:
+            - url
+          properties:
+            url:
+              description: >-
+                This is a URL that links directly to the image that goes with
+                the resources.
+              type: string
+              example: >-
+                https://upload.wikimedia.org/wikipedia/commons/thumb/d/dc/Steve_Jobs_Headshot_2010-CROP_%28cropped_2%29.jpg/330px-Steve_Jobs_Headshot_2010-CROP_%28cropp   
+                ed_2%29.jpg
+            height:
+              description: The height of the image.
+              type: integer
+              example: 300
+            width:
+              description: The width of the image.
+              type: integer
+              example: 310
+        props:
+          type: object
+          description: Holds arbitrary result metadata
+          additionalProperties: true
+    errorDetail:
+      type: object
+      description: API error response for Extract operations
+      required:
+        - code
+        - url
+      properties:
+        code:
+          type: string
+          description: Namespaced error code
+          example: extract.invalid_url
+        url:
+          type: string
+          format: uri
+          description: >
+            URL to error documentation.
+
+
+            **NOTE:** These URLs are still a work in progress and will currently
+            return a 404 error. These will be updated to real URLs as the
+            preview period continues.
+          example: https://help.kagi.com/api/errors#extract.invalid_url
+        message:
+          type: string
+          description: Human-readable error message
+          example: URL must be a valid HTTPS URL
+          nullable: true
+        location:
+          type: string
+          description: Field location where the error occurred
+          example: pages[0].url
+          nullable: true
+    errorEnvelope:
+      type: object
+      description: >-
+        API error response envelope containing metadata and an array of error
+        details
+      required:
+        - meta
+        - error
+      properties:
+        meta:
+          $ref: '#/components/schemas/meta'
+        data:
+          type: array
+          description: Empty data array when error occurs
+          items: {}
+          nullable: true
+        error:
+          type: array
+          description: Array of error detail objects describing what went wrong
+          items:
+            $ref: '#/components/schemas/errorDetail'
+    pageInput:
+      type: object
+      description: A single page to extract content from
+      required:
+        - url
+      properties:
+        url:
+          type: string
+          format: uri
+          description: |
+            The HTTPS URL of the page to extract content from.
+            Must use HTTPS scheme with a valid host.
+          example: https://example.com/article
+    extractRequest:
+      type: object
+      description: Request body for content extraction
+      required:
+        - pages
+      properties:
+        pages:
+          type: array
+          description: |
+            Array of pages to extract content from. Must contain 1-10 URLs.
+            Each URL must be a valid HTTPS URL.
+          minItems: 1
+          maxItems: 10
+          items:
+            $ref: '#/components/schemas/pageInput'
+        timeout:
+          type: number
+          format: float
+          minimum: 0.5
+          maximum: 10
+          description: >
+            Optional timeout in seconds for the extraction operation. Out of
+            range values will be clamped back within range.
+
+
+            All URLs are fetched concurrently. This timeout applies a time
+            budget for the entire bulk fetch operation.
+          example: 1.337
+        format:
+          type: string
+          description: >-
+            **(EXPERIMENTAL)** Format to serialize the API response as. The
+            exact contents and structure of markdown output is still being
+            worked on - please send your feedback!
+          enum:
+            - json
+            - markdown
+          default: json
+    pageOutput:
+      type: object
+      description: Extracted content for a single page
+      required:
+        - url
+      properties:
+        url:
+          type: string
+          format: uri
+          description: The URL of the extracted page
+          example: https://example.com/article
+        markdown:
+          type: string
+          description: >-
+            Extracted markdown content of the page. Will be absent if extraction
+            fails.
+          example: |-
+            # Article Title
+
+            This is the extracted content...
+          nullable: true
+        error:
+          type: string
+          description: If extraction fails, a string describing the reason why.
+    extractResponse:
+      type: object
+      description: Response containing extracted content
+      required:
+        - meta
+        - data
+      properties:
+        meta:
+          $ref: '#/components/schemas/meta'
+        data:
+          type: array
+          description: Array of extracted page content
+          items:
+            $ref: '#/components/schemas/pageOutput'
+        errors:
+          type: array
+          description: Optional array of errors that occurred during extraction
+          items:
+            $ref: '#/components/schemas/errorDetail'
+  responses:
+    unauthorized:
+      description: Access token is missing or invalid
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/errorEnvelope'
+          examples:
+            default:
+              summary: Response with unauthorized error
+              value:
+                meta:
+                  trace: 69c3f5c4168f66b860e951c585550f1c
+                  node: us-central1
+                  ms: 213
+                data: null
+                error:
+                  - code: '2'
+                    url: https://help.kagi.com/api/errors#unauthorized
+                    message: Unauthorized
+                    location: null
+tags:
+  - name: Search
+    x-displayName: Search API
+    description: >
+      The Search API is a feature-rich endpoint for search products and agents.
+      It gives programmable access to Kagi's premium search results pulled from
+      many different sources - including our in-house indexes - and re-ranked to
+      surface accurate answers and interesting finds. You can read about our
+      approach towards search [on our
+      blog](https://blog.kagi.com/the-many-benefits-of-paying-for-search).
+
+
+      The API supports most of the features that we offer through our web UI,
+      including [Lenses](https://help.kagi.com/kagi/features/lenses.html).
+
+
+      You can also request full markdown extraction of the top results in a
+      single API request.
+  - name: Extract
+    x-displayName: Extract API
+    description: >
+      Extract contents from web pages, currently in markdown form. This endpoint
+      accepts a list of URLs
+
+      and returns the extracted markdown content for each page.

@@ -1,0 +1,30 @@
+{
+  "name": "pi-kagi",
+  "version": "1.0.0",
+  "description": "A pi extension for kagi search.",
+  "keywords": [
+    "pi"
+  ],
+  "pi": {
+    "extensions": [
+      "./src/index.ts"
+    ]
+  },
+  "license": "MIT",
+  "author": "themauveavenger",
+  "type": "module",
+  "main": "src/index.ts",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "typecheck": "tsc --noEmit"
+  },
+  "peerDependencies": {
+    "@earendil-works/pi-coding-agent": "*",
+    "typebox": "*"
+  },
+  "devDependencies": {
+    "@tsconfig/node26": "26.0.0",
+    "@types/node": "26.1.1",
+    "typescript": "7.0.2"
+  }
+}
