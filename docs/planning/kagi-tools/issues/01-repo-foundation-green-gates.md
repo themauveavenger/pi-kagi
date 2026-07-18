@@ -8,9 +8,9 @@
 
 **Status:** ready-for-agent
 
-- [ ] `npm run typecheck` exits 0 with no errors (the scaffold's stub tool definitions made type-valid)
-- [ ] `npm test` runs Node's built-in test runner against TypeScript test files, with no mocking or test-framework dependencies added
-- [ ] At least one meaningful test exists and passes
-- [ ] No new runtime or dev dependencies are introduced
+- [x] `npm run typecheck` exits 0 with no errors (the scaffold's stub tool definitions made type-valid)
+- [x] `npm test` runs Node's built-in test runner against TypeScript test files, with no mocking or test-framework dependencies added
+- [x] At least one meaningful test exists and passes
+- [x] No new runtime or dev dependencies are introduced
 
 ## Comments
