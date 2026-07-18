@@ -259,6 +259,137 @@ test("kagi_search renders non-web arrays as labeled sections after web results",
   assert.ok(text.includes("1. [News item](https://news.example.com/x)"));
 });
 
+function searchResponseOf(count: number) {
+  return {
+    meta: { trace: "t" },
+    data: {
+      search: Array.from({ length: count }, (_, i) => ({
+        url: `https://example.com/r${i + 1}`,
+        title: `Result ${i + 1}`,
+        snippet: `Snippet ${i + 1}`,
+      })),
+    },
+  };
+}
+
+test("kagi_search shows the first 10 results by default with a position footer", async () => {
+  const { fetchImpl } = stubFetch(() => jsonResponse(searchResponseOf(23)));
+
+  const result = await makeSearchTool(fetchImpl).execute("call-1", { query: "q" }, undefined, undefined, NO_CTX);
+  const text = textOf(result);
+
+  assert.ok(text.includes("1. [Result 1](https://example.com/r1)"));
+  assert.ok(text.includes("10. [Result 10](https://example.com/r10)"));
+  assert.ok(!text.includes("Result 11"), "results past the default limit stay hidden");
+  assert.ok(text.includes("Showing results 1–10 of 23"));
+  assert.ok(text.includes("offset: 11"), "footer points at the next offset");
+});
+
+test("kagi_search pages with limit and offset using absolute numbering", async () => {
+  const { calls, fetchImpl } = stubFetch(() => jsonResponse(searchResponseOf(23)));
+
+  const result = await makeSearchTool(fetchImpl).execute(
+    "call-1",
+    { query: "q", limit: 5, offset: 11 },
+    undefined,
+    undefined,
+    NO_CTX,
+  );
+  const text = textOf(result);
+
+  assert.ok(!text.includes("Result 10\n"), "earlier results stay hidden");
+  assert.ok(text.includes("11. [Result 11](https://example.com/r11)"));
+  assert.ok(text.includes("15. [Result 15](https://example.com/r15)"));
+  assert.ok(!text.includes("Result 16"), "results past the slice stay hidden");
+  assert.ok(text.includes("Showing results 11–15 of 23"));
+  assert.ok(text.includes("offset: 16"));
+
+  assert.deepEqual(JSON.parse(String(calls[0]?.init.body)), {
+    query: "q",
+    workflow: "search",
+    format: "json",
+  });
+});
+
+test("kagi_search explains when the offset is beyond the results", async () => {
+  const { fetchImpl } = stubFetch(() => jsonResponse(searchResponseOf(23)));
+
+  const result = await makeSearchTool(fetchImpl).execute(
+    "call-1",
+    { query: "q", offset: 50 },
+    undefined,
+    undefined,
+    NO_CTX,
+  );
+  const text = textOf(result);
+
+  assert.ok(text.includes("offset: 50"));
+  assert.ok(text.includes("23 results"));
+});
+
+test("kagi_search serves identical repeat searches from cache without a new fetch", async () => {
+  const { calls, fetchImpl } = stubFetch(() => jsonResponse(searchResponseOf(23)));
+  const tool = makeSearchTool(fetchImpl);
+
+  const first = await tool.execute("call-1", { query: "q" }, undefined, undefined, NO_CTX);
+  const second = await tool.execute("call-2", { query: "q" }, undefined, undefined, NO_CTX);
+
+  assert.equal(calls.length, 1, "the second identical search must not hit the API");
+  assert.ok(!textOf(first).includes("(from cache)"));
+  assert.ok(textOf(second).includes("(from cache)"));
+});
+
+test("kagi_search serves paging of a cached query without a new fetch", async () => {
+  const { calls, fetchImpl } = stubFetch(() => jsonResponse(searchResponseOf(23)));
+  const tool = makeSearchTool(fetchImpl);
+
+  await tool.execute("call-1", { query: "q" }, undefined, undefined, NO_CTX);
+  const paged = await tool.execute("call-2", { query: "q", offset: 11, limit: 5 }, undefined, undefined, NO_CTX);
+
+  assert.equal(calls.length, 1);
+  const text = textOf(paged);
+  assert.ok(text.includes("11. [Result 11](https://example.com/r11)"));
+  assert.ok(text.includes("(from cache)"));
+});
+
+test("kagi_search fetches once per distinct query", async () => {
+  const { calls, fetchImpl } = stubFetch(() => jsonResponse(searchResponseOf(3)));
+  const tool = makeSearchTool(fetchImpl);
+
+  await tool.execute("call-1", { query: "q1" }, undefined, undefined, NO_CTX);
+  const second = await tool.execute("call-2", { query: "q2" }, undefined, undefined, NO_CTX);
+
+  assert.equal(calls.length, 2);
+  assert.ok(!textOf(second).includes("(from cache)"));
+});
+
+test("kagi_search evicts the oldest cached query beyond 50 entries", async () => {
+  const { calls, fetchImpl } = stubFetch(() => jsonResponse(searchResponseOf(1)));
+  const tool = makeSearchTool(fetchImpl);
+
+  for (let i = 1; i <= 51; i++) {
+    await tool.execute(`call-${i}`, { query: `q${i}` }, undefined, undefined, NO_CTX);
+  }
+  assert.equal(calls.length, 51);
+
+  const evicted = await tool.execute("call-52", { query: "q1" }, undefined, undefined, NO_CTX);
+  assert.equal(calls.length, 52, "q1 was evicted by the 51st distinct query");
+  assert.ok(!textOf(evicted).includes("(from cache)"));
+
+  const retained = await tool.execute("call-53", { query: "q51" }, undefined, undefined, NO_CTX);
+  assert.equal(calls.length, 52, "q51 survived eviction and stays cached");
+  assert.ok(textOf(retained).includes("(from cache)"));
+});
+
+test("kagi_search declares limit and offset bounds in its parameter schema", () => {
+  const tool = makeSearchTool(stubFetch(() => jsonResponse({})).fetchImpl);
+  const { limit, offset } = tool.parameters.properties;
+
+  assert.ok("maximum" in limit && limit.maximum === 25);
+  assert.ok("minimum" in limit && limit.minimum === 1);
+  assert.ok("minimum" in offset && offset.minimum === 1);
+});
+
 test("kagi_search renders items without a URL as plain text, not empty links", async () => {
   const { fetchImpl } = stubFetch(() =>
     jsonResponse({

@@ -1,6 +1,7 @@
 import type { ExtensionAPI, ToolDefinition } from "@earendil-works/pi-coding-agent";
 import { Type } from "typebox";
-import { createKagiClient } from "./client.ts";
+import { createBoundedCache } from "./cache.ts";
+import { createKagiClient, type SearchResponse } from "./client.ts";
 import { formatSearchResults } from "./format.ts";
 
 export interface KagiToolsOptions {
@@ -11,12 +12,33 @@ export interface KagiToolsOptions {
 
 const searchParameters = Type.Object({
   query: Type.String({ description: "The search query" }),
+  limit: Type.Optional(
+    Type.Integer({
+      minimum: 1,
+      maximum: 25,
+      default: 10,
+      description: "Maximum number of web results to show (default 10)",
+    }),
+  ),
+  offset: Type.Optional(
+    Type.Integer({
+      minimum: 1,
+      default: 1,
+      description: "1-based index of the first result to show; page without issuing a new search (default 1)",
+    }),
+  ),
 });
 
 const extractParameters = Type.Object({});
 
-export function createKagiTools(options: KagiToolsOptions) {
+const SEARCH_CACHE_MAX_ENTRIES = 50;
+
+export function createKagiTools(
+  options: KagiToolsOptions,
+): [ToolDefinition<typeof searchParameters>, ToolDefinition<typeof extractParameters>] {
   const client = createKagiClient(options);
+  // Lives as long as the registered tools — shared across sessions, no TTL.
+  const searchCache = createBoundedCache<string, SearchResponse>(SEARCH_CACHE_MAX_ENTRIES);
 
   const searchTool: ToolDefinition<typeof searchParameters> = {
     name: "kagi_search",
@@ -24,9 +46,27 @@ export function createKagiTools(options: KagiToolsOptions) {
     description: "Search the web with Kagi. Returns a compact markdown list of results.",
     parameters: searchParameters,
     async execute(_toolCallId, params, signal) {
-      const response = await client.search(params.query, signal);
+      const limit = params.limit ?? 10;
+      const offset = params.offset ?? 1;
+
+      const cached = searchCache.get(params.query);
+      const response = cached ?? (await client.search(params.query, signal));
+      if (!cached) {
+        searchCache.set(params.query, response);
+      }
+
       return {
-        content: [{ type: "text" as const, text: formatSearchResults(response) }],
+        content: [
+          {
+            type: "text" as const,
+            text: formatSearchResults(response, {
+              query: params.query,
+              limit,
+              offset,
+              fromCache: cached !== undefined,
+            }),
+          },
+        ],
         details: {},
       };
     },

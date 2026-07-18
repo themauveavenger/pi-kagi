@@ -8,13 +8,13 @@
 
 **Status:** ready-for-agent
 
-- [ ] `kagi_search` accepts `limit` (integer 1–25, default 10) and `offset` (integer ≥ 1, default 1), interpreted as a 1-based result index mirroring pi's `read` tool
-- [ ] `limit` and `offset` never appear in the API request body
-- [ ] A search identical to a previous one performs no fetch and its output includes a `(from cache)` marker
-- [ ] Paging the same query with different `offset`/`limit` values performs no new fetch
-- [ ] An `offset` beyond the available results returns a clear message stating how many results the query has, rather than an error
-- [ ] The search cache is module-scope, process-lifetime, shared across sessions, with FIFO eviction beyond 50 entries
-- [ ] Cache behavior is verified through the tool seam only (second call performs no second fetch, marker present) — no inspecting cache internals in tests
-- [ ] `npm run typecheck` and `npm test` pass
+- [x] `kagi_search` accepts `limit` (integer 1–25, default 10) and `offset` (integer ≥ 1, default 1), interpreted as a 1-based result index mirroring pi's `read` tool
+- [x] `limit` and `offset` never appear in the API request body
+- [x] A search identical to a previous one performs no fetch and its output includes a `(from cache)` marker
+- [x] Paging the same query with different `offset`/`limit` values performs no new fetch
+- [x] An `offset` beyond the available results returns a clear message stating how many results the query has, rather than an error
+- [x] The search cache is module-scope, process-lifetime, shared across sessions, with FIFO eviction beyond 50 entries
+- [x] Cache behavior is verified through the tool seam only (second call performs no second fetch, marker present) — no inspecting cache internals in tests
+- [x] `npm run typecheck` and `npm test` pass
 
 ## Comments
