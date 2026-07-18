@@ -1,13 +1,14 @@
 import type { ExtensionAPI, ToolDefinition } from "@earendil-works/pi-coding-agent";
 import { Type } from "typebox";
 import { createBoundedCache } from "./cache.ts";
-import { createKagiClient, type SearchResponse } from "./client.ts";
-import { formatSearchResults } from "./format.ts";
+import { createKagiClient, type PageOutput, type SearchResponse } from "./client.ts";
+import { capOutputBytes, formatExtractedPage, formatSearchResults } from "./format.ts";
 
 export interface KagiToolsOptions {
   fetchImpl: typeof fetch;
   getApiKey: () => string | undefined;
   searchTimeoutMs?: number;
+  extractTimeoutMs?: number;
 }
 
 const searchParameters = Type.Object({
@@ -29,9 +30,27 @@ const searchParameters = Type.Object({
   ),
 });
 
-const extractParameters = Type.Object({});
+const extractParameters = Type.Object({
+  url: Type.String({ description: "The HTTPS URL of the page to extract content from" }),
+  limit: Type.Optional(
+    Type.Integer({
+      minimum: 1,
+      maximum: 2000,
+      default: 250,
+      description: "Maximum number of lines of page content to return (default 250)",
+    }),
+  ),
+  offset: Type.Optional(
+    Type.Integer({
+      minimum: 1,
+      default: 1,
+      description: "1-based line number to start from; page through long content (default 1)",
+    }),
+  ),
+});
 
 const SEARCH_CACHE_MAX_ENTRIES = 50;
+const PAGE_CACHE_MAX_ENTRIES = 100;
 
 export function createKagiTools(
   options: KagiToolsOptions,
@@ -39,6 +58,7 @@ export function createKagiTools(
   const client = createKagiClient(options);
   // Lives as long as the registered tools — shared across sessions, no TTL.
   const searchCache = createBoundedCache<string, SearchResponse>(SEARCH_CACHE_MAX_ENTRIES);
+  const pageCache = createBoundedCache<string, PageOutput>(PAGE_CACHE_MAX_ENTRIES);
 
   const searchTool: ToolDefinition<typeof searchParameters> = {
     name: "kagi_search",
@@ -59,12 +79,14 @@ export function createKagiTools(
         content: [
           {
             type: "text" as const,
-            text: formatSearchResults(response, {
-              query: params.query,
-              limit,
-              offset,
-              fromCache: cached !== undefined,
-            }),
+            text: capOutputBytes(
+              formatSearchResults(response, {
+                query: params.query,
+                limit,
+                offset,
+                fromCache: cached !== undefined,
+              }),
+            ),
           },
         ],
         details: {},
@@ -75,11 +97,26 @@ export function createKagiTools(
   const extractTool: ToolDefinition<typeof extractParameters> = {
     name: "kagi_extract",
     label: "Kagi Extract",
-    description: "Extract page content as markdown with Kagi.",
+    description:
+      "Extract a web page's content as markdown with Kagi. Long pages are paged with offset and limit, like the read tool.",
     parameters: extractParameters,
-    async execute() {
+    async execute(_toolCallId, params, signal) {
+      const limit = params.limit ?? 250;
+      const offset = params.offset ?? 1;
+
+      const cached = pageCache.get(params.url);
+      const page = cached ?? (await client.extract(params.url, signal));
+      if (!cached) {
+        pageCache.set(params.url, page);
+      }
+
       return {
-        content: [{ type: "text" as const, text: "kagi_extract is not implemented yet." }],
+        content: [
+          {
+            type: "text" as const,
+            text: capOutputBytes(formatExtractedPage(page, { limit, offset, fromCache: cached !== undefined })),
+          },
+        ],
         details: {},
       };
     },
@@ -89,11 +126,10 @@ export function createKagiTools(
 }
 
 export default function (pi: ExtensionAPI) {
-  const tools = createKagiTools({
+  const [searchTool, extractTool] = createKagiTools({
     fetchImpl: fetch,
     getApiKey: () => process.env.KAGI_API_KEY,
   });
-  for (const tool of tools) {
-    pi.registerTool(tool);
-  }
+  pi.registerTool(searchTool);
+  pi.registerTool(extractTool);
 }

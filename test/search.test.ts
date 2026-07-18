@@ -381,6 +381,32 @@ test("kagi_search evicts the oldest cached query beyond 50 entries", async () =>
   assert.ok(textOf(retained).includes("(from cache)"));
 });
 
+test("kagi_search caps oversized output at 50KB", async () => {
+  const { fetchImpl } = stubFetch(() =>
+    jsonResponse({
+      meta: { trace: "t" },
+      data: {
+        search: Array.from({ length: 25 }, (_, i) => ({
+          url: `https://example.com/r${i + 1}`,
+          title: `Result ${i + 1} ${"t".repeat(3000)}`,
+        })),
+      },
+    }),
+  );
+
+  const result = await makeSearchTool(fetchImpl).execute(
+    "call-1",
+    { query: "q", limit: 25 },
+    undefined,
+    undefined,
+    NO_CTX,
+  );
+  const text = textOf(result);
+
+  assert.ok(new TextEncoder().encode(text).byteLength <= 50 * 1024, "output stays within 50KB");
+  assert.ok(text.includes("[Output capped at 50KB"));
+});
+
 test("kagi_search declares limit and offset bounds in its parameter schema", () => {
   const tool = makeSearchTool(stubFetch(() => jsonResponse({})).fetchImpl);
   const { limit, offset } = tool.parameters.properties;

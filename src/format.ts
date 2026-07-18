@@ -1,4 +1,4 @@
-import type { SearchResponse, SearchResultItem } from "./client.ts";
+import type { PageOutput, SearchResponse, SearchResultItem } from "./client.ts";
 
 const SNIPPET_MAX_LENGTH = 240;
 
@@ -69,4 +69,60 @@ function truncateSnippet(snippet: string): string {
 function humanize(kind: string): string {
   const words = kind.replace(/_/g, " ");
   return words.charAt(0).toUpperCase() + words.slice(1);
+}
+
+const OUTPUT_MAX_BYTES = 50 * 1024;
+const OUTPUT_CAP_NOTICE = "\n\n[Output capped at 50KB — page through the content with offset and limit.]";
+
+/**
+ * Hard backstop for any tool response: guarantees the result stays within
+ * 50KB, cutting at a line boundary where possible.
+ */
+export function capOutputBytes(text: string): string {
+  const encoder = new TextEncoder();
+  if (encoder.encode(text).byteLength <= OUTPUT_MAX_BYTES) {
+    return text;
+  }
+
+  const budget = OUTPUT_MAX_BYTES - encoder.encode(OUTPUT_CAP_NOTICE).byteLength;
+  const truncated = new TextDecoder().decode(encoder.encode(text).slice(0, budget));
+  const lastNewline = truncated.lastIndexOf("\n");
+  let body = lastNewline > 0 ? truncated.slice(0, lastNewline) : truncated;
+  while (body.length > 0 && encoder.encode(body + OUTPUT_CAP_NOTICE).byteLength > OUTPUT_MAX_BYTES) {
+    body = body.slice(0, -1);
+  }
+  return body + OUTPUT_CAP_NOTICE;
+}
+
+export interface ExtractFormatOptions {
+  limit: number;
+  offset: number;
+  fromCache?: boolean;
+}
+
+export function formatExtractedPage(page: PageOutput, options: ExtractFormatOptions): string {
+  const { limit, offset, fromCache = false } = options;
+  const cacheMarker = fromCache ? " (from cache)" : "";
+
+  if (page.error !== undefined || page.markdown === undefined) {
+    const reason = page.error ?? "no content was returned";
+    return `# ${page.url}\n\nExtraction failed: ${reason}${cacheMarker}`;
+  }
+
+  const lines = page.markdown.split("\n");
+  const total = lines.length;
+  const header = `# ${page.url} — ${total} lines${cacheMarker}`;
+
+  if (offset > total) {
+    return `${header}\n\nNo content at offset: ${offset} — the page has ${total} lines.`;
+  }
+
+  const slice = lines.slice(offset - 1, offset - 1 + limit);
+  const end = offset + slice.length - 1;
+
+  const parts = [header, "", slice.join("\n")];
+  if (end < total) {
+    parts.push("", `[Showing lines ${offset}–${end} of ${total}. Use offset: ${end + 1} for more.]`);
+  }
+  return parts.join("\n");
 }
