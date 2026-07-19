@@ -119,6 +119,14 @@ export function createKagiTools(
         client.extract(url, signal),
       );
 
+      // A per-page extraction failure is not a successful result — don't
+      // pin it in the cache or every later call for this URL returns the
+      // same failure without retrying. The value is still in `page` for
+      // the current call's output; only the cache write is undone.
+      if (page.error !== undefined) {
+        pageCache.evict(params.url);
+      }
+
       return {
         content: [
           {

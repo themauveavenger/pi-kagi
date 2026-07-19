@@ -127,18 +127,32 @@ test("kagi_extract evicts the oldest cached page beyond 100 entries", async () =
   assert.ok(textOf(retained).includes("(from cache)"));
 });
 
-test("kagi_extract returns per-page extraction failures as ordinary content", async () => {
-  const { calls, fetchImpl } = stubFetch(() =>
-    jsonResponse({ meta: { trace: "t" }, data: [{ url: PAGE_URL, error: "failed to fetch page: 403 Forbidden" }] }),
-  );
+test("kagi_extract returns per-page extraction failures as ordinary content and does not cache them", async () => {
+  const stub = stubFetch(() => {
+    // First two calls return a per-page error; later calls return a successful page.
+    if (stub.calls.length <= 2) {
+      return jsonResponse({ meta: { trace: "t" }, data: [{ url: PAGE_URL, error: "failed to fetch page: 403 Forbidden" }] });
+    }
+    return jsonResponse(extractResponse(pageFixture(3)));
+  });
+  const { calls, fetchImpl } = stub;
   const tool = makeExtractTool(fetchImpl);
 
   const first = await tool.execute("call-1", { url: PAGE_URL }, undefined, undefined, NO_CTX);
   assert.ok(textOf(first).includes("Extraction failed: failed to fetch page: 403 Forbidden"));
+  assert.equal(calls.length, 1, "first call hits the API");
 
   const second = await tool.execute("call-2", { url: PAGE_URL }, undefined, undefined, NO_CTX);
-  assert.equal(calls.length, 1, "a cached failure is not retried");
-  assert.ok(textOf(second).includes("(from cache)"));
+  assert.equal(calls.length, 2, "a failed extract is not cached, so the next call re-fetches");
+  assert.ok(!textOf(second).includes("(from cache)"), "the re-fetched failure is not from cache");
+
+  const third = await tool.execute("call-3", { url: PAGE_URL }, undefined, undefined, NO_CTX);
+  assert.equal(calls.length, 3, "a successful extract is fetched fresh");
+  assert.ok(!textOf(third).includes("(from cache)"));
+
+  const fourth = await tool.execute("call-4", { url: PAGE_URL }, undefined, undefined, NO_CTX);
+  assert.equal(calls.length, 3, "the success is now cached, so the fourth call is served from cache");
+  assert.ok(textOf(fourth).includes("(from cache)"));
 });
 
 test("kagi_extract throws on whole-call HTTP failures", async () => {
