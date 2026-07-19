@@ -119,13 +119,50 @@ const STATUS_MESSAGES: Record<number, string> = {
   500: "Kagi server error",
 };
 
+/**
+ * The error response shape from the Kagi API, per the OpenAPI `errorEnvelope`
+ * schema: `meta` and a non-empty `error` array are required. `meta.trace` is
+ * optional debug info; the first `errorDetail` carries a required `code` and a
+ * nullable `message`.
+ */
 interface ErrorEnvelope {
-  meta?: { trace?: unknown };
-  error?: Array<{ code?: unknown; message?: unknown }>;
+  meta: { trace?: unknown };
+  error: Array<{ code?: unknown; message?: unknown }>;
 }
 
+/**
+ * Type guard that validates the required structure of a Kagi error envelope:
+ * an object with a `meta` object and a non-empty `error` array whose first
+ * element is an object. Narrowing to `ErrorEnvelope` is then honest — the
+ * fields the type names are actually present.
+ */
 function isErrorEnvelope(value: unknown): value is ErrorEnvelope {
-  return typeof value === "object" && value !== null;
+  if (typeof value !== "object" || value === null) return false;
+  const v = value as Record<string, unknown>;
+  if (typeof v.meta !== "object" || v.meta === null) return false;
+  if (!Array.isArray(v.error) || v.error.length === 0) return false;
+  return typeof v.error[0] === "object" && v.error[0] !== null;
+}
+
+/**
+ * Extract the human-readable parts of a validated error envelope — Kagi's
+ * trace id and the first error detail (preferring `message`, falling back to
+ * `code`) — or `null` when the body isn't a well-formed envelope, so the
+ * caller can fall back to a status-only message.
+ */
+function describeErrorEnvelope(body: unknown): { trace?: string; detail?: string } | null {
+  if (!isErrorEnvelope(body)) return null;
+
+  const trace = typeof body.meta.trace === "string" ? body.meta.trace : undefined;
+  const first = body.error[0];
+  const detail =
+    typeof first.message === "string"
+      ? first.message
+      : typeof first.code === "string"
+        ? first.code
+        : undefined;
+
+  return { trace, detail };
 }
 
 function normalizeFetchError(cause: unknown, operation: string, timeoutMs: number): Error {
@@ -148,16 +185,10 @@ async function toApiError(response: Response, operation: string): Promise<Error>
 
   try {
     const body: unknown = await response.json();
-    if (isErrorEnvelope(body)) {
-      if (typeof body.meta?.trace === "string") {
-        trace = body.meta.trace;
-      }
-      const first = body.error?.[0];
-      if (typeof first?.message === "string") {
-        detail = first.message;
-      } else if (typeof first?.code === "string") {
-        detail = first.code;
-      }
+    const described = describeErrorEnvelope(body);
+    if (described) {
+      trace = described.trace;
+      detail = described.detail;
     }
   } catch {
     // Error body wasn't JSON — fall through to the status-only message.

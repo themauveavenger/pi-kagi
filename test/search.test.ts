@@ -127,6 +127,29 @@ test("kagi_search tolerates a non-JSON error body", async () => {
   );
 });
 
+test("kagi_search ignores a trace on a body that is not a real error envelope", async () => {
+  // A body with `meta.trace` but no `error` array is not an error envelope
+  // per the OpenAPI schema (which requires `meta` and a non-empty `error`).
+  // The trace must not be trusted; fall back to the status-only message.
+  const { fetchImpl } = stubFetch(() =>
+    jsonResponse({ meta: { trace: "should-not-leak" }, data: { search: [] } }, 500),
+  );
+
+  const tool = makeSearchTool(fetchImpl);
+  await assert.rejects(
+    () => tool.execute("call-1", { query: "steve jobs" }, undefined, undefined, NO_CTX),
+    (error: unknown) => {
+      assert.ok(error instanceof Error);
+      assert.ok(error.message.includes("server error"), "should mention the status");
+      assert.ok(
+        !error.message.includes("should-not-leak"),
+        "must not adopt a trace from a non-envelope body",
+      );
+      return true;
+    },
+  );
+});
+
 test("kagi_search wraps network failures in plain language", async () => {
   const { fetchImpl } = stubFetch(() => Promise.reject(new TypeError("fetch failed: getaddrinfo ENOTFOUND kagi.com")));
 
