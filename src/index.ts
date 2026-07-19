@@ -1,4 +1,5 @@
 import type { ExtensionAPI, ToolDefinition } from "@earendil-works/pi-coding-agent";
+import { Text } from "@earendil-works/pi-tui";
 import { Type } from "typebox";
 import { createBoundedCache } from "./cache.ts";
 import { createKagiClient, type PageOutput, type SearchResponse } from "./client.ts";
@@ -57,6 +58,20 @@ const extractParameters = Type.Object({
 
 const SEARCH_CACHE_MAX_ENTRIES = 50;
 const PAGE_CACHE_MAX_ENTRIES = 100;
+const DEFAULT_SEARCH_LIMIT = 10;
+const DEFAULT_EXTRACT_LIMIT = 250;
+
+/**
+ * Format the `(offset=X, limit=Y)` annotation for the collapsed one-liner.
+ * Returns "" when both paging args are at their defaults — defaults are
+ * already the obvious state, so naming them adds noise without information.
+ */
+function pageAnnotation(limit: number | undefined, offset: number | undefined, defaultLimit: number): string {
+  const parts: string[] = [];
+  if (offset !== undefined && offset !== 1) parts.push(`offset=${offset}`);
+  if (limit !== undefined && limit !== defaultLimit) parts.push(`limit=${limit}`);
+  return parts.length === 0 ? "" : ` (${parts.join(", ")})`;
+}
 
 export function createKagiTools(
   options: KagiToolsOptions,
@@ -105,6 +120,25 @@ export function createKagiTools(
         details: {},
       };
     },
+    renderCall(args, theme) {
+      return new Text(`${theme.fg("toolTitle", theme.bold("kagi_search"))} ${(args as { query: string }).query}`, 0, 0);
+    },
+    renderResult(result, options, _theme, context) {
+      if (!options.expanded) {
+        const args = context.args as { query: string; limit?: number; offset?: number };
+        const body = result.content[0];
+        const cached = body?.type === "text" && body.text.includes("(from cache)");
+        const paging = pageAnnotation(args.limit, args.offset, DEFAULT_SEARCH_LIMIT);
+        // renderCall already shows the query — collapsed result only adds
+        // supplementary info (paging, cache).
+        const parts: string[] = [];
+        if (paging) parts.push(paging.replace(/^\(|\)$/g, ""));
+        if (cached) parts.push("from cache");
+        return new Text(parts.join(" · "), 0, 0);
+      }
+      const text = result.content[0];
+      return new Text(text?.type === "text" ? text.text : "", 0, 0);
+    },
   };
 
   const extractTool: ToolDefinition<typeof extractParameters> = {
@@ -151,6 +185,25 @@ export function createKagiTools(
         ],
         details: {},
       };
+    },
+    renderCall(args, theme) {
+      return new Text(`${theme.fg("toolTitle", theme.bold("kagi_extract"))} ${(args as { url: string }).url}`, 0, 0);
+    },
+    renderResult(result, options, _theme, context) {
+      if (!options.expanded) {
+        const args = context.args as { url: string; limit?: number; offset?: number };
+        const body = result.content[0];
+        const cached = body?.type === "text" && body.text.includes("(from cache)");
+        const paging = pageAnnotation(args.limit, args.offset, DEFAULT_EXTRACT_LIMIT);
+        // renderCall already shows the URL — collapsed result only adds
+        // supplementary info (paging, cache).
+        const parts: string[] = [];
+        if (paging) parts.push(paging.replace(/^\(|\)$/g, ""));
+        if (cached) parts.push("from cache");
+        return new Text(parts.join(" · "), 0, 0);
+      }
+      const text = result.content[0];
+      return new Text(text?.type === "text" ? text.text : "", 0, 0);
     },
   };
 
