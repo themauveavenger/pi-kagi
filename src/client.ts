@@ -132,16 +132,17 @@ interface ErrorEnvelope {
 
 /**
  * Type guard that validates the required structure of a Kagi error envelope:
- * an object with a `meta` object and a non-empty `error` array whose first
- * element is an object. Narrowing to `ErrorEnvelope` is then honest — the
- * fields the type names are actually present.
+ * an object with a `meta` object and a non-empty `error` array whose every
+ * element is a non-null object. Narrowing to `ErrorEnvelope` is then honest —
+ * the fields the type names (including every array element) are actually
+ * present, not just the first element we happen to read.
  */
 function isErrorEnvelope(value: unknown): value is ErrorEnvelope {
   if (typeof value !== "object" || value === null) return false;
   const v = value as Record<string, unknown>;
   if (typeof v.meta !== "object" || v.meta === null) return false;
   if (!Array.isArray(v.error) || v.error.length === 0) return false;
-  return typeof v.error[0] === "object" && v.error[0] !== null;
+  return v.error.every((entry) => typeof entry === "object" && entry !== null);
 }
 
 /**
