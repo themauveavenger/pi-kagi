@@ -76,11 +76,9 @@ export function createKagiTools(
       const limit = params.limit ?? 10;
       const offset = params.offset ?? 1;
 
-      const cached = searchCache.get(params.query);
-      const response = cached ?? (await client.search(params.query, signal));
-      if (!cached) {
-        searchCache.set(params.query, response);
-      }
+      const { value: response, fromCache } = await searchCache.lookup(params.query, (query) =>
+        client.search(query, signal),
+      );
 
       return {
         content: [
@@ -91,7 +89,7 @@ export function createKagiTools(
                 query: params.query,
                 limit,
                 offset,
-                fromCache: cached !== undefined,
+                fromCache,
               }),
             ),
           },
@@ -117,17 +115,15 @@ export function createKagiTools(
       const limit = params.limit ?? 250;
       const offset = params.offset ?? 1;
 
-      const cached = pageCache.get(params.url);
-      const page = cached ?? (await client.extract(params.url, signal));
-      if (!cached) {
-        pageCache.set(params.url, page);
-      }
+      const { value: page, fromCache } = await pageCache.lookup(params.url, (url) =>
+        client.extract(url, signal),
+      );
 
       return {
         content: [
           {
             type: "text" as const,
-            text: capOutputBytes(formatExtractedPage(page, { limit, offset, fromCache: cached !== undefined })),
+            text: capOutputBytes(formatExtractedPage(page, { limit, offset, fromCache })),
           },
         ],
         details: {},
