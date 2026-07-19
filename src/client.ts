@@ -1,3 +1,5 @@
+import { match, P } from "ts-pattern";
+
 export interface KagiClientOptions {
   fetchImpl: typeof fetch;
   getApiKey: () => string | undefined;
@@ -156,28 +158,32 @@ function describeErrorEnvelope(body: unknown): { trace?: string; detail?: string
 
   const trace = typeof body.meta.trace === "string" ? body.meta.trace : undefined;
   const first = body.error[0];
-  const detail =
-    typeof first.message === "string"
-      ? first.message
-      : typeof first.code === "string"
-        ? first.code
-        : undefined;
+  const detail = match(first)
+    .with({ message: P.string }, (entry) => entry.message)
+    .with({ code: P.string }, (entry) => entry.code)
+    .otherwise(() => undefined);
 
   return { trace, detail };
 }
 
 function normalizeFetchError(cause: unknown, operation: string, timeoutMs: number): Error {
-  if (cause instanceof DOMException) {
-    if (cause.name === "AbortError") {
+  const message = (error: Error) => `Kagi ${operation} request failed: ${error.message}`;
+
+  return match(cause)
+    .with(
+      P.instanceOf(DOMException),
+      (error) => error.name === "AbortError",
       // Caller cancellation — propagate as-is so pi sees a normal abort.
-      return cause;
-    }
-    if (cause.name === "TimeoutError") {
-      return new Error(`Kagi ${operation} timed out after ${timeoutMs / 1000}s`);
-    }
-  }
-  const message = cause instanceof Error ? cause.message : String(cause);
-  return new Error(`Kagi ${operation} request failed: ${message}`, { cause });
+      (error) => error,
+    )
+    .with(
+      P.instanceOf(DOMException),
+      (error) => error.name === "TimeoutError",
+      () => new Error(`Kagi ${operation} timed out after ${timeoutMs / 1000}s`),
+    )
+    .with(P.instanceOf(DOMException), (error) => new Error(message(error), { cause }))
+    .with(P.instanceOf(Error), (error) => new Error(message(error), { cause }))
+    .otherwise(() => new Error(`Kagi ${operation} request failed: ${String(cause)}`, { cause }));
 }
 
 async function toApiError(response: Response, operation: string): Promise<Error> {
