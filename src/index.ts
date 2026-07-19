@@ -70,9 +70,11 @@ export function createKagiTools(
     name: "kagi_search",
     label: "Kagi Search",
     description:
-      "Search the web with Kagi. Returns a compact markdown list of results. " +
+      "Search the web with Kagi, a metered web-search API (kagi.com/api). " +
+      "Returns a compact markdown list of results. " +
       "Identical queries and paging are served from an in-memory cache, so they cost nothing.",
-    promptSnippet: "Search the web with Kagi (compact markdown results, cached paging)",
+    promptSnippet:
+      "Search the web with Kagi, a metered web-search API (kagi.com/api); returns compact markdown results, cached paging",
     promptGuidelines: [
       "Use kagi_search before considering kagi_extract; search snippets often answer the question on their own.",
       "When kagi_search results are insufficient, page deeper with kagi_search's offset parameter instead of rephrasing or repeating the same query.",
@@ -109,12 +111,16 @@ export function createKagiTools(
     name: "kagi_extract",
     label: "Kagi Extract",
     description:
-      "Extract a web page's content as markdown with Kagi. Long pages are paged with offset and limit, like the read tool. " +
+      "Extract a web page's content as markdown via Kagi, a metered web-search API (kagi.com/api). " +
+      "Long pages are paged with offset and limit, like the read tool. " +
       "Each uncached URL is a paid Kagi API call; extracted pages are cached.",
-    promptSnippet: "Extract a web page as markdown with Kagi, paged like the read tool",
+    promptSnippet:
+      "Extract a web page as markdown via Kagi, a metered web-search API (kagi.com/api); paged like the read tool",
     promptGuidelines: [
       "Use kagi_extract only on URLs you intend to read; each uncached kagi_extract URL costs a paid Kagi API call.",
       "Page through long kagi_extract content with offset and limit rather than re-requesting the same URL at a larger limit.",
+      "Use kagi_extract's refresh parameter only when a cached page may be stale (a live or recently updated page); normal offset/limit paging never needs refresh, and a failed extract auto-retries on the next call without it.",
+      "Use kagi_extract for remote https URLs and the read tool for local file paths.",
     ],
     parameters: extractParameters,
     async execute(_toolCallId, params, signal) {
