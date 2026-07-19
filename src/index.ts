@@ -122,17 +122,19 @@ export function createKagiTools(
       const offset = params.offset ?? 1;
       const refresh = params.refresh ?? false;
 
-      const { value: page, fromCache } = await (refresh
-        ? pageCache.refresh(params.url, (url) => client.extract(url, signal))
-        : pageCache.lookup(params.url, (url) => client.extract(url, signal)));
+      // A per-page extraction failure is not a successful result — don't pin
+      // it in the cache, or every later call for this URL returns the same
+      // failure without retrying. Passing the predicate to the cache keeps
+      // the bad value out of the store entirely, so it can never evict a
+      // good page to make room for one we'd then drop. The value is still
+      // returned for the current call's output; only the cache write is
+      // skipped.
+      const cacheable = (page: PageOutput) => page.error === undefined;
+      const miss = (url: string) => client.extract(url, signal);
 
-      // A per-page extraction failure is not a successful result — don't
-      // pin it in the cache or every later call for this URL returns the
-      // same failure without retrying. The value is still in `page` for
-      // the current call's output; only the cache write is undone.
-      if (page.error !== undefined) {
-        pageCache.evict(params.url);
-      }
+      const { value: page, fromCache } = await (refresh
+        ? pageCache.refresh(params.url, miss, cacheable)
+        : pageCache.lookup(params.url, miss, cacheable));
 
       return {
         content: [

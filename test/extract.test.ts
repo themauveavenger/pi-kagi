@@ -200,6 +200,42 @@ test("kagi_extract bypasses the cache and writes back when refresh is true", asy
   assert.equal(calls.length, 2, "the refresh wrote back; no third fetch");
 });
 
+test("a per-page extraction failure never evicts a cached page to make room for itself", async () => {
+  const { calls, fetchImpl } = stubFetch(({ init }) => {
+    const body = JSON.parse(String(init.body)) as { pages: Array<{ url: string }> };
+    const url = body.pages[0]?.url ?? PAGE_URL;
+    // The 101st distinct URL fails; every other URL extracts normally.
+    if (url.endsWith("/p101")) {
+      return jsonResponse({ meta: { trace: "t" }, data: [{ url, error: "failed to fetch page: 403 Forbidden" }] });
+    }
+    return jsonResponse(extractResponse(pageFixture(1), url));
+  });
+  const tool = makeExtractTool(fetchImpl);
+
+  // Fill the page cache to exactly its capacity of 100 distinct pages.
+  for (let i = 1; i <= 100; i++) {
+    await tool.execute(`call-${i}`, { url: `https://example.com/p${i}` }, undefined, undefined, NO_CTX);
+  }
+  assert.equal(calls.length, 100);
+
+  // The 101st distinct URL returns a per-page failure. Previously this
+  // would store the error, evict the oldest cached page (p1) to make room,
+  // and only then delete the error — silently losing a good cache entry.
+  const failed = await tool.execute("call-fail", { url: "https://example.com/p101" }, undefined, undefined, NO_CTX);
+  assert.ok(textOf(failed).includes("Extraction failed: failed to fetch page: 403 Forbidden"));
+  assert.equal(calls.length, 101, "the failed extract hit the API");
+
+  // p1 must still be in the cache: the failure was never written, so it
+  // never displaced anything.
+  const stillCached = await tool.execute("call-p1-again", { url: "https://example.com/p1" }, undefined, undefined, NO_CTX);
+  assert.ok(textOf(stillCached).includes("(from cache)"), "p1 was not evicted by the failed extract");
+  assert.equal(calls.length, 101, "no new fetch — p1 came from the cache");
+
+  // And the error URL itself must not be cached: retrying it fetches again.
+  const retry = await tool.execute("call-fail-retry", { url: "https://example.com/p101" }, undefined, undefined, NO_CTX);
+  assert.equal(calls.length, 102, "the failed URL is not cached, so retrying it re-fetches");
+});
+
 test("kagi_extract throws on whole-call HTTP failures", async () => {
   const { fetchImpl } = stubFetch(() =>
     jsonResponse(
