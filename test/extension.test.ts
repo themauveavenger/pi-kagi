@@ -45,3 +45,22 @@ test("registered tools carry the metadata pi needs to present them", () => {
     );
   }
 });
+
+test("tools declare prompt snippets and cost-conscious guidelines that name the tool", () => {
+  const { tools, pi } = captureRegistrations();
+
+  extension(pi);
+
+  for (const tool of tools) {
+    assert.ok(tool.promptSnippet && tool.promptSnippet.length > 0, `${tool.name} needs a promptSnippet`);
+    assert.ok(
+      tool.promptGuidelines && tool.promptGuidelines.length > 0,
+      `${tool.name} needs promptGuidelines`,
+    );
+    for (const guideline of tool.promptGuidelines) {
+      // pi appends guidelines flat to the Guidelines section with no tool
+      // name prefix, so each must name its tool to be attributable.
+      assert.ok(guideline.includes("kagi_"), `guideline must name its tool: "${guideline}"`);
+    }
+  }
+});
