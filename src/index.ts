@@ -47,6 +47,12 @@ const extractParameters = Type.Object({
       description: "1-based line number to start from; page through long content (default 1)",
     }),
   ),
+  refresh: Type.Optional(
+    Type.Boolean({
+      default: false,
+      description: "Bypass the cache for this call and overwrite the cached page with the fresh result",
+    }),
+  ),
 });
 
 const SEARCH_CACHE_MAX_ENTRIES = 50;
@@ -114,10 +120,11 @@ export function createKagiTools(
     async execute(_toolCallId, params, signal) {
       const limit = params.limit ?? 250;
       const offset = params.offset ?? 1;
+      const refresh = params.refresh ?? false;
 
-      const { value: page, fromCache } = await pageCache.lookup(params.url, (url) =>
-        client.extract(url, signal),
-      );
+      const { value: page, fromCache } = await (refresh
+        ? pageCache.refresh(params.url, (url) => client.extract(url, signal))
+        : pageCache.lookup(params.url, (url) => client.extract(url, signal)));
 
       // A per-page extraction failure is not a successful result — don't
       // pin it in the cache or every later call for this URL returns the

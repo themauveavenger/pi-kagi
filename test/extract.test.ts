@@ -92,6 +92,15 @@ test("kagi_extract declares limit and offset bounds in its parameter schema", ()
   assert.ok("minimum" in offset && offset.minimum === 1);
 });
 
+test("kagi_extract declares a refresh parameter in its schema", () => {
+  const tool = makeExtractTool(stubFetch(() => jsonResponse({})).fetchImpl);
+  const { refresh } = tool.parameters.properties;
+
+  assert.ok(refresh, "the schema includes a refresh property");
+  assert.ok("type" in refresh && refresh.type === "boolean");
+  assert.ok("default" in refresh && refresh.default === false);
+});
+
 test("kagi_extract serves repeat extracts of a URL from cache", async () => {
   const { calls, fetchImpl } = stubFetch(() => jsonResponse(extractResponse(pageFixture(10))));
   const tool = makeExtractTool(fetchImpl);
@@ -153,6 +162,42 @@ test("kagi_extract returns per-page extraction failures as ordinary content and 
   const fourth = await tool.execute("call-4", { url: PAGE_URL }, undefined, undefined, NO_CTX);
   assert.equal(calls.length, 3, "the success is now cached, so the fourth call is served from cache");
   assert.ok(textOf(fourth).includes("(from cache)"));
+});
+
+test("kagi_extract bypasses the cache and writes back when refresh is true", async () => {
+  const original = "Line 0001 original\nLine 0002\nLine 0003";
+  const refreshed = "Line 0001 refreshed\nLine 0002\nLine 0003";
+  const stub = stubFetch(() => {
+    // The first fetch returns the original; every later fetch returns the refreshed content.
+    return jsonResponse(extractResponse(stub.calls.length === 1 ? original : refreshed));
+  });
+  const { calls, fetchImpl } = stub;
+  const tool = makeExtractTool(fetchImpl);
+
+  // First call: caches the original content.
+  const first = await tool.execute("call-1", { url: PAGE_URL }, undefined, undefined, NO_CTX);
+  assert.ok(textOf(first).includes("original"));
+  assert.ok(!textOf(first).includes("refreshed"));
+  assert.equal(calls.length, 1);
+
+  // Second call without refresh: served from cache.
+  const second = await tool.execute("call-2", { url: PAGE_URL }, undefined, undefined, NO_CTX);
+  assert.ok(textOf(second).includes("original"));
+  assert.ok(textOf(second).includes("(from cache)"));
+  assert.equal(calls.length, 1, "no new fetch on a plain cache hit");
+
+  // Third call with refresh=true: re-fetches and stores the new content.
+  const third = await tool.execute("call-3", { url: PAGE_URL, refresh: true }, undefined, undefined, NO_CTX);
+  assert.ok(textOf(third).includes("refreshed"), "the refreshed call returns the fresh content");
+  assert.ok(!textOf(third).includes("original"));
+  assert.ok(!textOf(third).includes("(from cache)"), "the fresh fetch is not marked as from cache");
+  assert.equal(calls.length, 2);
+
+  // Fourth call without refresh: now served from the refreshed cache entry.
+  const fourth = await tool.execute("call-4", { url: PAGE_URL }, undefined, undefined, NO_CTX);
+  assert.ok(textOf(fourth).includes("refreshed"), "the refreshed value is now in the cache");
+  assert.ok(textOf(fourth).includes("(from cache)"));
+  assert.equal(calls.length, 2, "the refresh wrote back; no third fetch");
 });
 
 test("kagi_extract throws on whole-call HTTP failures", async () => {

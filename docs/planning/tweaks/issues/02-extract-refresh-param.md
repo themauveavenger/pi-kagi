@@ -8,12 +8,12 @@
 
 **Status:** ready-for-agent
 
-- [ ] Schema gains `refresh: Type.Optional(Type.Boolean({ default: false }))` with a description that says "Bypass the cache for this call and overwrite the cached page with the fresh result"
-- [ ] When `refresh=true`, the page is fetched even if the URL is already cached
-- [ ] The fresh result is written back to the cache so a subsequent call with `refresh=false` (or unset) is served from cache and shows the `(from cache)` marker
-- [ ] When `refresh=false` (default), behaviour is unchanged
-- [ ] The `(from cache)` marker is accurate for all four combinations of `refresh` value and prior cache state
-- [ ] The new parameter and behaviour are covered by tests through the tool seam
-- [ ] `npm run typecheck` and `npm test` pass
+- [x] Schema gains `refresh: Type.Optional(Type.Boolean({ default: false }))` with a description that says "Bypass the cache for this call and overwrite the cached page with the fresh result"
+- [x] When `refresh=true`, the page is fetched even if the URL is already cached
+- [x] The fresh result is written back to the cache so a subsequent call with `refresh=false` (or unset) is served from cache and shows the `(from cache)` marker
+- [x] When `refresh=false` (default), behaviour is unchanged
+- [x] The `(from cache)` marker is accurate for all four combinations of `refresh` value and prior cache state
+- [x] The new parameter and behaviour are covered by tests through the tool seam
+- [x] `npm run typecheck` and `npm test` pass
 
 ## Comments
