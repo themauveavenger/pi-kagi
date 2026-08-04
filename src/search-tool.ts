@@ -5,6 +5,7 @@ import type { BoundedCache } from "./cache.ts";
 import type { KagiClient, SearchResponse } from "./client.ts";
 import { capOutputBytes, formatSearchResults } from "./format.ts";
 import { pageAnnotation } from "./tool-render.ts";
+import type { SearchBudget } from "./search-budget.ts";
 
 const searchParameters = Type.Object({
   query: Type.String({ description: "The search query" }),
@@ -31,6 +32,7 @@ const DEFAULT_SEARCH_LIMIT = 10;
 export function createSearchTool(
   client: KagiClient,
   searchCache: BoundedCache<string, SearchResponse>,
+  searchBudget?: SearchBudget,
 ): ToolDefinition<typeof searchParameters> {
   return {
     name: "kagi_search",
@@ -43,6 +45,9 @@ export function createSearchTool(
       "Search the web with Kagi, a metered web-search API (kagi.com/api); returns compact markdown results, cached paging",
     promptGuidelines: [
       "Use kagi_search before considering kagi_extract; search snippets often answer the question on their own.",
+      "During the current task, use kagi_search for at most two uncached searches. Before calling kagi_search, form one precise query with the subject, required fact, and any known version, date, or authoritative domain.",
+      "After kagi_search returns, assess its snippets and page cached results before using a second kagi_search; do not issue speculative parallel query variants.",
+      "When the kagi_search budget is exhausted, use cached Kagi content, selected kagi_extract pages, or another available research capability instead of another kagi_search.",
       "When kagi_search results are insufficient, page deeper with kagi_search's offset parameter instead of rephrasing or repeating the same query.",
     ],
     parameters: searchParameters,
@@ -50,9 +55,10 @@ export function createSearchTool(
       const limit = params.limit ?? 10;
       const offset = params.offset ?? 1;
 
-      const { value: response, fromCache } = await searchCache.lookup(params.query, (query) =>
-        client.search(query, signal),
-      );
+      const { value: response, fromCache } = await searchCache.lookup(params.query, (query) => {
+        searchBudget?.reserve();
+        return client.search(query, signal);
+      });
 
       return {
         content: [
@@ -68,7 +74,7 @@ export function createSearchTool(
             ),
           },
         ],
-        details: {},
+        details: { kagi: { source: fromCache ? "cache" : "paid" } },
       };
     },
     renderCall(args, theme) {

@@ -2,7 +2,7 @@
 
 A [pi](https://pi.dev) extension that gives the agent two metered, cost-conscious tools backed by the [Kagi API](https://kagi.com/api): **`kagi_search`** and the page extractor **`kagi_extract`**.
 
-The agent is steered toward cheap behavior through the tool prompt guidelines — search first, extract only pages you intend to read, page with `offset`/`limit` rather than re-issuing calls — and through two in-memory caches (search result sets keyed by query, extracted pages keyed by URL) that make paging and repeat lookups free. The extension has **zero runtime dependencies**: it uses native `fetch` and Node modules only, and the pi-provided peer packages (`@earendil-works/pi-coding-agent`, `typebox`) are resolved at runtime to pi's own bundled copies via the extension loader's jiti alias map, so installing this package never drags in a duplicate copy of pi.
+The agent is steered toward cheap behavior through tool prompt guidelines — search first, extract only pages you intend to read, page with `offset`/`limit` rather than re-issuing calls — and through two in-memory caches (search result sets keyed by query, extracted pages keyed by URL) that make paging and repeat lookups free. It also enforces a maximum of two uncached searches per agent run, while leaving extraction unrestricted. The extension has **zero runtime dependencies**: it uses native `fetch` and Node modules only, and the pi-provided peer packages (`@earendil-works/pi-coding-agent`, `typebox`) are resolved at runtime to pi's own bundled copies via the extension loader's jiti alias map, so installing this package never drags in a duplicate copy of pi.
 
 ## Prerequisites
 
@@ -100,6 +100,12 @@ Search the web with Kagi. Returns a compact markdown list of results.
 | `offset` | integer ≥ 1 | 1 | 1-based index to page into the cached result set; no new paid call. |
 
 The full single-pass result set for a query is cached in memory (process lifetime, FIFO eviction at 50 queries), so paging with `offset`/`limit` and repeating identical queries both cost nothing. Cache hits are marked `(from cache)`. Non-web result types present in the response (news, direct answers, infoboxes, related searches) are rendered as labeled sections; machine-only noise (`props`, proxy image URLs, language probabilities) is stripped.
+
+### Search budget and status
+
+`kagi_search` permits at most two uncached searches while pi works on one prompt. The allowance resets only after pi settles and control returns to you. Cached repeats and pagination are free and do not count; `kagi_extract` is not capped.
+
+The footer shows the active search allowance plus paid-search, paid-extract, and cache-hit totals. Hide or restore it for the current session with `/kagi status off` or `/kagi status on`.
 
 ### `kagi_extract`
 

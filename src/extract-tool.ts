@@ -80,7 +80,7 @@ export function createExtractTool(
             text: capOutputBytes(formatExtractedPage(page, { limit, offset, fromCache })),
           },
         ],
-        details: {},
+        details: { kagi: { source: fromCache ? "cache" : "paid" } },
       };
     },
     renderCall(args, theme) {

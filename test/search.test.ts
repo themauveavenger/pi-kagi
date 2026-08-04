@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { createKagiTools } from "../src/index.ts";
+import { createKagiTools, createSearchBudget } from "../src/index.ts";
 import { jsonResponse, NO_CTX, stubFetch, textOf } from "./helpers.ts";
 
 function makeSearchTool(fetchImpl: typeof fetch, options: { apiKey?: string } = {}) {
@@ -428,6 +428,26 @@ test("kagi_search caps oversized output at 50KB", async () => {
 
   assert.ok(new TextEncoder().encode(text).byteLength <= 50 * 1024, "output stays within 50KB");
   assert.ok(text.includes("[Output capped at 50KB"));
+});
+
+test("kagi_search allows only two paid searches during one agent run and resets after settlement", async () => {
+  const { calls, fetchImpl } = stubFetch(() => jsonResponse(searchResponseOf(1)));
+  const budget = createSearchBudget(2);
+  const [tool] = createKagiTools({ fetchImpl, getApiKey: () => "test-key" }, { searchBudget: budget });
+
+  budget.beginRun();
+  await tool.execute("call-1", { query: "first" }, undefined, undefined, NO_CTX);
+  await tool.execute("call-2", { query: "second" }, undefined, undefined, NO_CTX);
+  await assert.rejects(
+    () => tool.execute("call-3", { query: "third" }, undefined, undefined, NO_CTX),
+    /Kagi search budget exhausted.*2\/2/,
+  );
+  assert.equal(calls.length, 2, "the blocked search never reaches Kagi");
+
+  budget.settleRun();
+  budget.beginRun();
+  await tool.execute("call-4", { query: "third" }, undefined, undefined, NO_CTX);
+  assert.equal(calls.length, 3, "a new agent run receives a fresh search budget");
 });
 
 test("kagi_search declares limit and offset bounds in its parameter schema", () => {

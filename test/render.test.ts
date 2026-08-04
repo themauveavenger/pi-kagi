@@ -27,6 +27,9 @@ function captureRegistrations(): { tools: ToolDefinitionAny[]; pi: ExtensionAPI 
     registerTool(definition: ToolDefinitionAny) {
       tools.push(definition);
     },
+    on() {},
+    registerCommand() {},
+    appendEntry() {},
   } as unknown as ExtensionAPI;
   return { tools, pi };
 }
