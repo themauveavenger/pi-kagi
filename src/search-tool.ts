@@ -5,6 +5,7 @@ import type { BoundedCache } from "./cache.ts";
 import type { KagiClient, SearchResponse } from "./client.ts";
 import { capOutputBytes, formatSearchResults } from "./format.ts";
 import { collapsedPagingRenderer } from "./tool-render.ts";
+import type { KagiToolDetails } from "./tool-details.ts";
 import SearchBudget from "./search-budget.ts";
 
 const searchParameters = Type.Object({
@@ -33,7 +34,7 @@ export function createSearchTool(
   client: KagiClient,
   searchCache: BoundedCache<string, SearchResponse>,
   searchBudget?: SearchBudget,
-): ToolDefinition<typeof searchParameters> {
+): ToolDefinition<typeof searchParameters, KagiToolDetails> {
   return {
     name: "kagi_search",
     label: "Kagi Search",

@@ -34,7 +34,7 @@ export default class SearchBudget {
   }
 
   beginRun(): void {
-    if (this.state === "active") return;
+    if (this.state === "active") {return;}
     this.used = 0;
     this.state = "active";
   }
@@ -43,7 +43,7 @@ export default class SearchBudget {
     // Retain the count for the settled run's status display. Settling
     // without a run leaves the budget idle, so the status never claims a
     // "last run" that never happened.
-    if (this.state === "active") this.state = "settled";
+    if (this.state === "active") {this.state = "settled";}
   }
 
   getState(): BudgetState {

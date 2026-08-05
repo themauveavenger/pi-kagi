@@ -3,6 +3,7 @@ import { createBoundedCache, type BoundedCache } from "./cache.ts";
 import { createKagiClient, type PageOutput, type SearchResponse } from "./client.ts";
 import { createExtractTool, PAGE_CACHE_MAX_ENTRIES } from "./extract-tool.ts";
 import { createSearchTool, SEARCH_CACHE_MAX_ENTRIES } from "./search-tool.ts";
+import { readKagiSource } from "./tool-details.ts";
 import SearchBudget from "./search-budget.ts";
 
 // Whole-call failures are part of this package's interface: callers that
@@ -99,13 +100,38 @@ export default function (pi: ExtensionAPI) {
 
   function restoreStatusPreference(ctx: { sessionManager: { getBranch(): unknown[] } }): void {
     for (const entry of ctx.sessionManager.getBranch()) {
-      if (typeof entry !== "object" || entry === null) continue;
+      if (typeof entry !== "object" || entry === null) {continue;}
       const candidate = entry as { type?: unknown; customType?: unknown; data?: unknown };
-      if (candidate.type !== "custom" || candidate.customType !== "kagi-settings") continue;
-      if (typeof candidate.data !== "object" || candidate.data === null) continue;
+      if (candidate.type !== "custom" || candidate.customType !== "kagi-settings") {continue;}
+      if (typeof candidate.data !== "object" || candidate.data === null) {continue;}
       const data = candidate.data as { showStatus?: unknown };
-      if (typeof data.showStatus === "boolean") showStatus = data.showStatus;
+      if (typeof data.showStatus === "boolean") {showStatus = data.showStatus;}
     }
+  }
+
+  /**
+   * Tallies one kagi_search/kagi_extract result into the footer counters.
+   * `readKagiSource` isolates the untyped-`details` parsing; this is left
+   * with only the decision the parsed value implies, so a paid call always
+   * lands on the counter for its own tool and a cache hit always lands on
+   * the shared one. Anything `readKagiSource` doesn't recognise — another
+   * tool's result, or a Kagi result with no `details` — is silently not our
+   * business, not an error.
+   */
+  function recordToolResult(
+    event: { toolName: string; details: unknown },
+    ctx: Parameters<typeof updateStatus>[0],
+  ): void {
+    if (event.toolName !== "kagi_search" && event.toolName !== "kagi_extract") {return;}
+
+    const source = readKagiSource(event.details);
+    if (source === undefined) {return;}
+
+    if (source === "cache") {cacheHits++;}
+    else if (event.toolName === "kagi_search") {paidSearches++;}
+    else {paidExtracts++;}
+
+    updateStatus(ctx);
   }
 
   const [searchTool, extractTool] = createKagiTools(
@@ -131,33 +157,12 @@ export default function (pi: ExtensionAPI) {
     updateStatus(ctx);
   });
 
-  pi.on("tool_result", (event, ctx) => {
-    if (event.toolName !== "kagi_search" && event.toolName !== "kagi_extract") return;
-    const details = event.details;
-    if (typeof details !== "object" || details === null) return;
-    const kagi = (details as { kagi?: unknown }).kagi;
-    if (typeof kagi !== "object" || kagi === null) return;
-    const source = (kagi as { source?: unknown }).source;
-    if (source === "cache") {
-      cacheHits++;
-    } else if (source === "paid") {
-      if (event.toolName === "kagi_search") paidSearches++;
-      else paidExtracts++;
-    } else {
-      return;
-    }
-    updateStatus(ctx);
-  });
+  pi.on("tool_result", recordToolResult);
 
   pi.registerCommand("kagi", {
-    description: "Show or hide Kagi footer statistics: /kagi status on|off",
-    handler: async (args, ctx) => {
-      const setting = args.trim().match(/^status\s+(on|off)$/i)?.[1]?.toLowerCase();
-      if (setting === undefined) {
-        ctx.ui.notify("Usage: /kagi status on|off", "info");
-        return;
-      }
-      showStatus = setting === "on";
+    description: "Toggle Kagi footer statistics on or off",
+    handler: async (_args, ctx) => {
+      showStatus = !showStatus;
       pi.appendEntry("kagi-settings", { showStatus });
       updateStatus(ctx);
     },

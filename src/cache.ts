@@ -25,11 +25,13 @@ export interface BoundedCache<K, V> {
     miss: (key: K) => Promise<V>,
     shouldCache?: (value: V) => boolean,
   ): Promise<{ value: V; fromCache: boolean }>;
+
   refresh(
     key: K,
     miss: (key: K) => Promise<V>,
     shouldCache?: (value: V) => boolean,
   ): Promise<{ value: V; fromCache: boolean }>;
+
   clear(): void;
 }
 
@@ -39,7 +41,11 @@ export function createBoundedCache<K, V>(maxEntries: number): BoundedCache<K, V>
   function evictIfNeeded(): void {
     while (entries.size > maxEntries) {
       const oldest = entries.keys().next();
-      if (oldest.done) break;
+
+      if (oldest.done) {
+        break;
+      }
+
       entries.delete(oldest.value);
     }
   }

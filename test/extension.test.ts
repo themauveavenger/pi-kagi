@@ -110,7 +110,7 @@ test("extension preserves a settled run's search count and resets it when the ne
   }
 });
 
-test("kagi footer status is visible by default and can be toggled off", async () => {
+test("kagi footer status is visible by default and toggles with each /kagi call", async () => {
   const { eventHandlers, commands, pi } = captureRegistrations();
   const statuses: Array<string | undefined> = [];
   const ctx = {
@@ -124,8 +124,12 @@ test("kagi footer status is visible by default and can be toggled off", async ()
 
   const command = commands.get("kagi");
   assert.ok(command, "extension registers /kagi");
-  await command.handler("status off" as never, ctx as never);
-  assert.equal(statuses.at(-1), undefined);
+
+  await command.handler("" as never, ctx as never);
+  assert.equal(statuses.at(-1), undefined, "the first call hides the footer");
+
+  await command.handler("" as never, ctx as never);
+  assert.ok(statuses.at(-1)?.includes("Kagi: search 0/2"), "the second call restores it");
 });
 
 test("a session with no run yet reports the cap as a per-run allowance, not a spent budget", async () => {
@@ -225,8 +229,8 @@ test("caches outlive the extension factory so a resumed or new session still rea
     assert.deepEqual(result.details, { kagi: { source: "cache" } });
   } finally {
     globalThis.fetch = originalFetch;
-    if (originalKey === undefined) delete process.env.KAGI_API_KEY;
-    else process.env.KAGI_API_KEY = originalKey;
+    if (originalKey === undefined) {delete process.env.KAGI_API_KEY;}
+    else {process.env.KAGI_API_KEY = originalKey;}
   }
 });
 
@@ -261,8 +265,8 @@ test("resetSharedCaches empties the caches that outlive the factory", async () =
     assert.deepEqual(result.details, { kagi: { source: "paid" } });
   } finally {
     globalThis.fetch = originalFetch;
-    if (originalKey === undefined) delete process.env.KAGI_API_KEY;
-    else process.env.KAGI_API_KEY = originalKey;
+    if (originalKey === undefined) {delete process.env.KAGI_API_KEY;}
+    else {process.env.KAGI_API_KEY = originalKey;}
   }
 });
 

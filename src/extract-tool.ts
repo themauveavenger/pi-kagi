@@ -4,6 +4,7 @@ import type { ToolDefinition } from "@earendil-works/pi-coding-agent";
 import type { BoundedCache } from "./cache.ts";
 import type { KagiClient, PageOutput } from "./client.ts";
 import { pageAnnotation } from "./tool-render.ts";
+import type { KagiToolDetails } from "./tool-details.ts";
 
 import { capOutputBytes, formatExtractedPage } from "./format.ts";
 import { collapsedPagingRenderer } from "./tool-render.ts";
@@ -39,7 +40,7 @@ const DEFAULT_EXTRACT_LIMIT = 250;
 export function createExtractTool(
   client: KagiClient,
   pageCache: BoundedCache<string, PageOutput>,
-): ToolDefinition<typeof extractParameters> {
+): ToolDefinition<typeof extractParameters, KagiToolDetails> {
   return {
     name: "kagi_extract",
     label: "Kagi Extract",

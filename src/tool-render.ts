@@ -9,8 +9,8 @@ import type { TSchema } from "typebox";
  */
 export function pageAnnotation(limit: number | undefined, offset: number | undefined, defaultLimit: number): string {
   const parts: string[] = [];
-  if (offset !== undefined && offset !== 1) parts.push(`offset=${offset}`);
-  if (limit !== undefined && limit !== defaultLimit) parts.push(`limit=${limit}`);
+  if (offset !== undefined && offset !== 1) {parts.push(`offset=${offset}`);}
+  if (limit !== undefined && limit !== defaultLimit) {parts.push(`limit=${limit}`);}
   return parts.length === 0 ? "" : ` (${parts.join(", ")})`;
 }
 
@@ -38,8 +38,8 @@ export function collapsedPagingRenderer<TParams extends TSchema>(
     const paging = pageAnnotation(args.limit, args.offset, defaultLimit);
 
     const parts: string[] = [];
-    if (paging) parts.push(paging.replace(/^\(|\)$/g, ""));
-    if (cached) parts.push("from cache");
+    if (paging) {parts.push(paging.replace(/^\(|\)$/g, ""));}
+    if (cached) {parts.push("from cache");}
     return new Text(parts.join(" · "), 0, 0);
   };
 }

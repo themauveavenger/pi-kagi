@@ -80,8 +80,8 @@ export class KagiApiError extends Error {
   ) {
     const statusMessage = STATUS_MESSAGES[status] ?? `Kagi API error (HTTP ${status})`;
     const parts = [`Kagi ${operation} failed: ${statusMessage}`];
-    if (envelope.detail) parts.push(envelope.detail);
-    if (envelope.trace) parts.push(`trace: ${envelope.trace}`);
+    if (envelope.detail) {parts.push(envelope.detail);}
+    if (envelope.trace) {parts.push(`trace: ${envelope.trace}`);}
 
     super(parts.join(" — "), options);
     this.name = "KagiApiError";

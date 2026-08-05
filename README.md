@@ -114,7 +114,7 @@ The footer shows the search budget plus paid-search, paid-extract, and cache-hit
 | `search 2/2 this run (limit reached)` | A run is in progress and has spent its budget. |
 | `search 2/2 last run · resets next run` | The run finished; that was its cost, and the next run starts fresh. |
 
-Hide or restore the footer for the current session with `/kagi status off` or `/kagi status on`.
+Toggle the footer for the current session with `/kagi`.
 
 ### `kagi_extract`
 

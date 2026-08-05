@@ -41,6 +41,7 @@ export interface ExtractResponse {
 
 export interface KagiClient {
   search(query: string, signal?: AbortSignal): Promise<SearchResponse>;
+
   extract(url: string, signal?: AbortSignal): Promise<PageOutput>;
 }
 
@@ -133,10 +134,20 @@ interface ErrorEnvelope {
  * present, not just the first element we happen to read.
  */
 function isErrorEnvelope(value: unknown): value is ErrorEnvelope {
-  if (typeof value !== "object" || value === null) return false;
+  if (typeof value !== "object" || value === null) {
+    return false;
+  }
+
   const v = value as Record<string, unknown>;
-  if (typeof v.meta !== "object" || v.meta === null) return false;
-  if (!Array.isArray(v.error) || v.error.length === 0) return false;
+
+  if (typeof v.meta !== "object" || v.meta === null) {
+    return false;
+  }
+
+  if (!Array.isArray(v.error) || v.error.length === 0) {
+    return false;
+  }
+
   return v.error.every((entry) => typeof entry === "object" && entry !== null);
 }
 
@@ -147,7 +158,9 @@ function isErrorEnvelope(value: unknown): value is ErrorEnvelope {
  * caller can fall back to a status-only message.
  */
 function describeErrorEnvelope(body: unknown): { trace?: string; detail?: string } | null {
-  if (!isErrorEnvelope(body)) return null;
+  if (!isErrorEnvelope(body)) {
+    return null;
+  }
 
   const trace = typeof body.meta.trace === "string" ? body.meta.trace : undefined;
   const first = body.error[0];
