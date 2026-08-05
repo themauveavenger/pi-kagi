@@ -1,7 +1,7 @@
 import { Text } from "@earendil-works/pi-tui";
 import { Type } from "typebox";
 import type { ToolDefinition } from "@earendil-works/pi-coding-agent";
-import type { BoundedCache } from "./cache.ts";
+import type BoundedCache from "./cache.ts";
 import type { KagiClient, PageOutput } from "./client.ts";
 import type { KagiToolDetails } from "./tool-details.ts";
 

@@ -1,5 +1,5 @@
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
-import { createBoundedCache, type BoundedCache } from "./cache.ts";
+import BoundedCache from "./cache.ts";
 import { createKagiClient, type PageOutput, type SearchResponse } from "./client.ts";
 import { createExtractTool, PAGE_CACHE_MAX_ENTRIES } from "./extract-tool.ts";
 import { createSearchTool, SEARCH_CACHE_MAX_ENTRIES } from "./search-tool.ts";
@@ -32,8 +32,8 @@ export interface KagiToolsOptions {
  * No TTL: entries live until FIFO eviction. Per-run and per-session state
  * (the search budget, the footer counters) stays inside the factory.
  */
-const sharedSearchCache = createBoundedCache<string, SearchResponse>(SEARCH_CACHE_MAX_ENTRIES);
-const sharedPageCache = createBoundedCache<string, PageOutput>(PAGE_CACHE_MAX_ENTRIES);
+const sharedSearchCache = new BoundedCache<string, SearchResponse>(SEARCH_CACHE_MAX_ENTRIES);
+const sharedPageCache = new BoundedCache<string, PageOutput>(PAGE_CACHE_MAX_ENTRIES);
 
 /**
  * Empties the shared caches. Because they outlive the extension factory,
@@ -58,8 +58,8 @@ export function createKagiTools(
   const client = createKagiClient(options);
   // Fresh per call unless a cache is injected, so each caller (and each
   // test) is isolated by default and sharing is an explicit decision.
-  const searchCache = dependencies.searchCache ?? createBoundedCache<string, SearchResponse>(SEARCH_CACHE_MAX_ENTRIES);
-  const pageCache = dependencies.pageCache ?? createBoundedCache<string, PageOutput>(PAGE_CACHE_MAX_ENTRIES);
+  const searchCache = dependencies.searchCache ?? new BoundedCache<string, SearchResponse>(SEARCH_CACHE_MAX_ENTRIES);
+  const pageCache = dependencies.pageCache ?? new BoundedCache<string, PageOutput>(PAGE_CACHE_MAX_ENTRIES);
 
   return [createSearchTool(client, searchCache, dependencies.searchBudget), createExtractTool(client, pageCache)];
 }

@@ -19,65 +19,62 @@
  * of a reference keep working against the now-empty cache. It exists for
  * tests that need isolation from module-level shared caches.
  */
-export interface BoundedCache<K, V> {
-  lookup(
-    key: K,
-    miss: (key: K) => Promise<V>,
-    shouldCache?: (value: V) => boolean,
-  ): Promise<{ value: V; fromCache: boolean }>;
+export default class BoundedCache<K, V> {
+  private readonly entries = new Map<K, V>();
+  private readonly maxEntries: number;
 
-  refresh(
-    key: K,
-    miss: (key: K) => Promise<V>,
-    shouldCache?: (value: V) => boolean,
-  ): Promise<{ value: V; fromCache: boolean }>;
+  constructor(maxEntries: number) {
+    this.maxEntries = maxEntries;
+  }
 
-  clear(): void;
-}
-
-export function createBoundedCache<K, V>(maxEntries: number): BoundedCache<K, V> {
-  const entries = new Map<K, V>();
-
-  function evictIfNeeded(): void {
-    while (entries.size > maxEntries) {
-      const oldest = entries.keys().next();
+  private evictIfNeeded(): void {
+    while (this.entries.size > this.maxEntries) {
+      const oldest = this.entries.keys().next();
 
       if (oldest.done) {
         break;
       }
 
-      entries.delete(oldest.value);
+      this.entries.delete(oldest.value);
     }
   }
 
-  return {
-    async lookup(key, miss, shouldCache) {
-      const cached = entries.get(key);
-      if (cached !== undefined) {
-        return { value: cached, fromCache: true };
-      }
-      const value = await miss(key);
-      if (shouldCache === undefined || shouldCache(value)) {
-        entries.set(key, value);
-        evictIfNeeded();
-      }
-      return { value, fromCache: false };
-    },
-    async refresh(key, miss, shouldCache) {
-      // Bypass the cache: always call miss and overwrite the cached entry.
-      // A throwing miss propagates without storing, so a failed refresh
-      // leaves whatever was already cached untouched. A `shouldCache`
-      // rejection likewise skips the store, so a failed refresh can't
-      // evict a good entry to make room for a value we'd then drop.
-      const value = await miss(key);
-      if (shouldCache === undefined || shouldCache(value)) {
-        entries.set(key, value);
-        evictIfNeeded();
-      }
-      return { value, fromCache: false };
-    },
-    clear() {
-      entries.clear();
-    },
-  };
+  async lookup(
+    key: K,
+    miss: (key: K) => Promise<V>,
+    shouldCache?: (value: V) => boolean,
+  ): Promise<{ value: V; fromCache: boolean }> {
+    const cached = this.entries.get(key);
+    if (cached !== undefined) {
+      return { value: cached, fromCache: true };
+    }
+    const value = await miss(key);
+    if (shouldCache === undefined || shouldCache(value)) {
+      this.entries.set(key, value);
+      this.evictIfNeeded();
+    }
+    return { value, fromCache: false };
+  }
+
+  async refresh(
+    key: K,
+    miss: (key: K) => Promise<V>,
+    shouldCache?: (value: V) => boolean,
+  ): Promise<{ value: V; fromCache: boolean }> {
+    // Bypass the cache: always call miss and overwrite the cached entry.
+    // A throwing miss propagates without storing, so a failed refresh
+    // leaves whatever was already cached untouched. A `shouldCache`
+    // rejection likewise skips the store, so a failed refresh can't
+    // evict a good entry to make room for a value we'd then drop.
+    const value = await miss(key);
+    if (shouldCache === undefined || shouldCache(value)) {
+      this.entries.set(key, value);
+      this.evictIfNeeded();
+    }
+    return { value, fromCache: false };
+  }
+
+  clear(): void {
+    this.entries.clear();
+  }
 }
