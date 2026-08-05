@@ -4,7 +4,7 @@ import type { ToolDefinition } from "@earendil-works/pi-coding-agent";
 import type { BoundedCache } from "./cache.ts";
 import type { KagiClient, SearchResponse } from "./client.ts";
 import { capOutputBytes, formatSearchResults } from "./format.ts";
-import { pageAnnotation } from "./tool-render.ts";
+import { collapsedPagingRenderer } from "./tool-render.ts";
 import SearchBudget from "./search-budget.ts";
 
 const searchParameters = Type.Object({
@@ -80,21 +80,6 @@ export function createSearchTool(
     renderCall(args, theme) {
       return new Text(`${theme.fg("toolTitle", theme.bold("kagi_search"))} ${(args as { query: string }).query}`, 0, 0);
     },
-    renderResult(result, options, _theme, context) {
-      if (!options.expanded) {
-        const args = context.args as { query: string; limit?: number; offset?: number };
-        const body = result.content[0];
-        const cached = body?.type === "text" && body.text.includes("(from cache)");
-        const paging = pageAnnotation(args.limit, args.offset, DEFAULT_SEARCH_LIMIT);
-        // renderCall already shows the query — collapsed result only adds
-        // supplementary info (paging, cache).
-        const parts: string[] = [];
-        if (paging) parts.push(paging.replace(/^\(|\)$/g, ""));
-        if (cached) parts.push("from cache");
-        return new Text(parts.join(" · "), 0, 0);
-      }
-      const text = result.content[0];
-      return new Text(text?.type === "text" ? text.text : "", 0, 0);
-    },
+    renderResult: collapsedPagingRenderer(DEFAULT_SEARCH_LIMIT),
   };
 }
