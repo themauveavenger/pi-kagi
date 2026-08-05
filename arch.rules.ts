@@ -21,7 +21,6 @@ export default [
     src: '**/src/**',
     noGenericErrors: true,
     noStubs: true,
-    noCopyPaste: true,
     noEmptyBodies: true,
     noInlineLogic: ['parseInt', 'JSON.parse', 'eval'],
     // Replaced below by a src-only copy-paste rule: parallel per-file setup
