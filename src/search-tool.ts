@@ -5,7 +5,7 @@ import type { BoundedCache } from "./cache.ts";
 import type { KagiClient, SearchResponse } from "./client.ts";
 import { capOutputBytes, formatSearchResults } from "./format.ts";
 import { pageAnnotation } from "./tool-render.ts";
-import type { SearchBudget } from "./search-budget.ts";
+import SearchBudget from "./search-budget.ts";
 
 const searchParameters = Type.Object({
   query: Type.String({ description: "The search query" }),

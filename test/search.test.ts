@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { createKagiTools, createSearchBudget } from "../src/index.ts";
+import { createKagiTools } from "../src/index.ts";
+import { createSearchBudget } from "../src/search-budget.ts";
 import { jsonResponse, NO_CTX, stubFetch, textOf } from "./helpers.ts";
 
 function makeSearchTool(fetchImpl: typeof fetch, options: { apiKey?: string } = {}) {

@@ -3,9 +3,7 @@ import { createBoundedCache } from "./cache.ts";
 import { createKagiClient, type PageOutput, type SearchResponse } from "./client.ts";
 import { createExtractTool, PAGE_CACHE_MAX_ENTRIES } from "./extract-tool.ts";
 import { createSearchTool, SEARCH_CACHE_MAX_ENTRIES } from "./search-tool.ts";
-import { createSearchBudget, type SearchBudget } from "./search-budget.ts";
-
-export { createSearchBudget, type SearchBudget } from "./search-budget.ts";
+import SearchBudget, { createSearchBudget } from "./search-budget.ts";
 
 export interface KagiToolsOptions {
   fetchImpl: typeof fetch;

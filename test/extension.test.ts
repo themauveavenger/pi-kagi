@@ -53,9 +53,10 @@ test("extension registers kagi_search and kagi_extract tools", () => {
   );
 });
 
-test("extension resets the two-search budget when an agent run settles", async () => {
+test("extension preserves a settled run's search count and resets it when the next run begins", async () => {
   const { tools, eventHandlers, pi } = captureRegistrations();
   const originalFetch = globalThis.fetch;
+  const statuses: Array<string | undefined> = [];
   let calls = 0;
   globalThis.fetch = (async () => {
     calls++;
@@ -68,10 +69,11 @@ test("extension resets the two-search budget when an agent run settles", async (
     assert.ok(search, "extension registers kagi_search");
 
     const lifecycleCtx = {
-      ui: { setStatus() {} },
+      ui: { setStatus: (_key: string, value: string | undefined) => statuses.push(value) },
       sessionManager: { getBranch: () => [] },
     };
-    await eventHandler(eventHandlers, "agent_start")({} as never, lifecycleCtx as never);
+    const agentStart = eventHandler(eventHandlers, "agent_start");
+    await agentStart({} as never, lifecycleCtx as never);
     await search.execute("one", { query: "one" }, undefined, undefined, undefined as never);
     await search.execute("two", { query: "two" }, undefined, undefined, undefined as never);
     await assert.rejects(
@@ -79,8 +81,14 @@ test("extension resets the two-search budget when an agent run settles", async (
       /Kagi search budget exhausted/,
     );
 
+    await agentStart({} as never, lifecycleCtx as never);
+    assert.ok(statuses.at(-1)?.includes("search 2/2 this run"), "a repeated start does not reset the active run");
+
     await eventHandler(eventHandlers, "agent_settled")({} as never, lifecycleCtx as never);
-    await eventHandler(eventHandlers, "agent_start")({} as never, lifecycleCtx as never);
+    assert.ok(statuses.at(-1)?.includes("search 2/2 this run"), "the settled run remains visible in the footer");
+
+    await agentStart({} as never, lifecycleCtx as never);
+    assert.ok(statuses.at(-1)?.includes("search 0/2 this run"), "the next run receives a fresh budget");
     await search.execute("three", { query: "three" }, undefined, undefined, undefined as never);
     assert.equal(calls, 3);
   } finally {
