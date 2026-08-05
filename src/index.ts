@@ -3,7 +3,7 @@ import { createBoundedCache } from "./cache.ts";
 import { createKagiClient, type PageOutput, type SearchResponse } from "./client.ts";
 import { createExtractTool, PAGE_CACHE_MAX_ENTRIES } from "./extract-tool.ts";
 import { createSearchTool, SEARCH_CACHE_MAX_ENTRIES } from "./search-tool.ts";
-import SearchBudget, { createSearchBudget } from "./search-budget.ts";
+import SearchBudget from "./search-budget.ts";
 
 export interface KagiToolsOptions {
   fetchImpl: typeof fetch;
@@ -25,7 +25,7 @@ export function createKagiTools(
 }
 
 export default function (pi: ExtensionAPI) {
-  const searchBudget = createSearchBudget(2);
+  const searchBudget = new SearchBudget(2);
   let showStatus = true;
   let paidSearches = 0;
   let paidExtracts = 0;
@@ -57,22 +57,16 @@ export default function (pi: ExtensionAPI) {
     },
     { searchBudget },
   );
-  let agentRunActive = false;
-
   pi.on("session_start", (_event, ctx) => {
     restoreStatusPreference(ctx);
     updateStatus(ctx);
   });
   pi.on("agent_start", (_event, ctx) => {
-    if (!agentRunActive) {
-      searchBudget.beginRun();
-      agentRunActive = true;
-    }
+    searchBudget.beginRun();
     updateStatus(ctx);
   });
   pi.on("agent_settled", (_event, ctx) => {
     searchBudget.settleRun();
-    agentRunActive = false;
     updateStatus(ctx);
   });
   pi.on("tool_result", (event, ctx) => {

@@ -1,6 +1,6 @@
 {
   "name": "pi-kagi",
-  "version": "1.0.2",
+  "version": "2.0.0",
   "description": "A pi extension for kagi search.",
   "keywords": [
     "pi",
@@ -16,6 +16,10 @@
   "author": "themauveavenger",
   "type": "module",
   "main": "src/index.ts",
+  "exports": {
+    ".": "./src/index.ts",
+    "./search-budget": "./src/search-budget.ts"
+  },
   "scripts": {
     "test": "node --test \"test/**/*.test.ts\"",
     "typecheck": "tsc --noEmit"

@@ -36,6 +36,14 @@ _Avoid_: extracted document, article, page response
 A Kagi API invocation the user is billed for. Cache hits are not paid calls; cache misses are. The central cost unit the tools are designed around.
 _Avoid_: API call, request, fetch
 
+**Search budget**:
+The maximum number of paid `kagi_search` calls permitted during one agent run. Cache hits do not consume it; each new agent run receives a fresh budget.
+_Avoid_: search allowance, search limit
+
+**Agent run**:
+Pi's active work period, from `agent_start` until `agent_settled`. A settled run retains its search-budget count for status display.
+_Avoid_: task, turn
+
 **Cache marker**:
 The `(from cache)` suffix in tool output that tells both user and agent a result came from the cache — no paid call occurred, and the data may be stale.
 _Avoid_: from-cache tag, cache flag

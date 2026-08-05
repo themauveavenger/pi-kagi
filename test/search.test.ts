@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { createKagiTools } from "../src/index.ts";
-import { createSearchBudget } from "../src/search-budget.ts";
+import SearchBudget from "../src/search-budget.ts";
 import { jsonResponse, NO_CTX, stubFetch, textOf } from "./helpers.ts";
 
 function makeSearchTool(fetchImpl: typeof fetch, options: { apiKey?: string } = {}) {
@@ -9,6 +9,34 @@ function makeSearchTool(fetchImpl: typeof fetch, options: { apiKey?: string } = 
   const [tool] = createKagiTools({ fetchImpl, getApiKey: () => apiKey });
   return tool;
 }
+
+test("SearchBudget rejects limits that are not non-negative finite numbers", () => {
+  for (const limit of [-1, Number.NaN, Number.POSITIVE_INFINITY, Number.NEGATIVE_INFINITY]) {
+    assert.throws(() => new SearchBudget(limit), RangeError);
+  }
+});
+
+test("SearchBudget accepts a zero limit", () => {
+  const budget = new SearchBudget(0);
+
+  assert.equal(budget.getLimit(), 0);
+  assert.throws(() => budget.reserve(), /Kagi search budget exhausted.*0\/0/);
+});
+
+test("SearchBudget preserves usage during an active run and resets it after settlement", () => {
+  const budget = new SearchBudget(2);
+
+  budget.beginRun();
+  budget.reserve();
+  budget.beginRun();
+  assert.equal(budget.getUsed(), 1, "a repeated start keeps the active run's usage");
+
+  budget.settleRun();
+  assert.equal(budget.getUsed(), 1, "settlement retains usage for status display");
+
+  budget.beginRun();
+  assert.equal(budget.getUsed(), 0, "a new run receives a fresh budget");
+});
 
 test("kagi_search posts the query and renders a numbered markdown list", async () => {
   const { calls, fetchImpl } = stubFetch(() =>
@@ -433,7 +461,7 @@ test("kagi_search caps oversized output at 50KB", async () => {
 
 test("kagi_search allows only two paid searches during one agent run and resets after settlement", async () => {
   const { calls, fetchImpl } = stubFetch(() => jsonResponse(searchResponseOf(1)));
-  const budget = createSearchBudget(2);
+  const budget = new SearchBudget(2);
   const [tool] = createKagiTools({ fetchImpl, getApiKey: () => "test-key" }, { searchBudget: budget });
 
   budget.beginRun();

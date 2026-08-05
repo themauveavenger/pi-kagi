@@ -11,20 +11,26 @@ export class BudgetExhaustedError extends Error {
  * so they remain free and do not consume the allowance.
  */
 export default class SearchBudget {
-  public used: number;
+  private used = 0;
+  private active = false;
   private readonly limit: number;
 
   constructor(limit: number) {
-    this.used = 0;
+    if (!Number.isFinite(limit) || limit < 0) {
+      throw new RangeError("Search budget limit must be a non-negative finite number");
+    }
     this.limit = limit;
   }
 
   beginRun(): void {
+    if (this.active) return;
     this.used = 0;
+    this.active = true;
   }
 
   settleRun(): void {
-    // left empty on purpose?
+    // Retain the count for the settled run's status display.
+    this.active = false;
   }
 
   getUsed(): number {
@@ -43,6 +49,3 @@ export default class SearchBudget {
   }
 }
 
-export function createSearchBudget(limit: number): SearchBudget {
-  return new SearchBudget(limit);
-}
