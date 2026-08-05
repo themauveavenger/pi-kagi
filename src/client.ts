@@ -1,4 +1,5 @@
 import { match, P } from "ts-pattern";
+import { KagiApiError, KagiRequestError, KagiTimeoutError, MissingApiKeyError } from "./errors.ts";
 
 export interface KagiClientOptions {
   fetchImpl: typeof fetch;
@@ -51,11 +52,7 @@ export function createKagiClient(options: KagiClientOptions): KagiClient {
   function requireApiKey(): string {
     const apiKey = options.getApiKey();
     if (!apiKey) {
-      throw new Error(
-        "KAGI_API_KEY is not set. Export it in your shell environment " +
-          "(for example, add 'export KAGI_API_KEY=...' to your shell profile). " +
-          "Get a key at https://kagi.com/api/keys",
-      );
+      throw new MissingApiKeyError();
     }
     return apiKey;
   }
@@ -66,12 +63,16 @@ export function createKagiClient(options: KagiClientOptions): KagiClient {
       signals.push(signal);
     }
 
+    // Resolved before the try: a missing key is a configuration failure, not
+    // a transport one, and must not be wrapped as a failed request.
+    const apiKey = requireApiKey();
+
     let response: Response;
     try {
       response = await options.fetchImpl(`${BASE_URL}${route}`, {
         method: "POST",
         headers: {
-          authorization: `Bearer ${requireApiKey()}`,
+          authorization: `Bearer ${apiKey}`,
           "content-type": "application/json",
         },
         body: JSON.stringify(body),
@@ -112,14 +113,6 @@ export function createKagiClient(options: KagiClientOptions): KagiClient {
     },
   };
 }
-
-const STATUS_MESSAGES: Record<number, string> = {
-  400: "invalid request",
-  401: "unauthorized — check that KAGI_API_KEY is valid",
-  403: "forbidden — your IP address is not authorized for this key",
-  429: "rate limited or API usage limit exhausted",
-  500: "Kagi server error",
-};
 
 /**
  * The error response shape from the Kagi API, per the OpenAPI `errorEnvelope`
@@ -167,8 +160,6 @@ function describeErrorEnvelope(body: unknown): { trace?: string; detail?: string
 }
 
 function normalizeFetchError(cause: unknown, operation: string, timeoutMs: number): Error {
-  const message = (error: Error) => `Kagi ${operation} request failed: ${error.message}`;
-
   return match(cause)
     .with(
       P.instanceOf(DOMException),
@@ -179,16 +170,13 @@ function normalizeFetchError(cause: unknown, operation: string, timeoutMs: numbe
     .with(
       P.instanceOf(DOMException),
       (error) => error.name === "TimeoutError",
-      () => new Error(`Kagi ${operation} timed out after ${timeoutMs / 1000}s`),
+      () => new KagiTimeoutError(operation, timeoutMs),
     )
-    .with(P.instanceOf(DOMException), (error) => new Error(message(error), { cause }))
-    .with(P.instanceOf(Error), (error) => new Error(message(error), { cause }))
-    .otherwise(() => new Error(`Kagi ${operation} request failed: ${String(cause)}`, { cause }));
+    .otherwise(() => new KagiRequestError(operation, cause));
 }
 
 async function toApiError(response: Response, operation: string): Promise<Error> {
-  let trace: string | undefined;
-  let detail: string | undefined;
+  let envelope: { trace?: string; detail?: string } = {};
   // Why the body could not be read, kept for the returned error's `cause`.
   // The fall-through to a status-only message is deliberate, but discarding
   // the reason would leave nothing to debug when the body was unexpected.
@@ -196,22 +184,15 @@ async function toApiError(response: Response, operation: string): Promise<Error>
 
   try {
     const body: unknown = await response.json();
-    const described = describeErrorEnvelope(body);
-    if (described) {
-      trace = described.trace;
-      detail = described.detail;
-    }
+    envelope = describeErrorEnvelope(body) ?? {};
   } catch (cause) {
     bodyFailure = cause;
   }
 
-  const statusMessage = STATUS_MESSAGES[response.status] ?? `Kagi API error (HTTP ${response.status})`;
-  const parts = [`Kagi ${operation} failed: ${statusMessage}`];
-  if (detail) {
-    parts.push(detail);
-  }
-  if (trace) {
-    parts.push(`trace: ${trace}`);
-  }
-  return new Error(parts.join(" — "), bodyFailure === undefined ? undefined : { cause: bodyFailure });
+  return new KagiApiError(
+    operation,
+    response.status,
+    envelope,
+    bodyFailure === undefined ? undefined : { cause: bodyFailure },
+  );
 }

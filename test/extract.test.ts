@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { createKagiTools } from "../src/index.ts";
+import { KagiApiError, KagiTimeoutError } from "../src/errors.ts";
 import { jsonResponse, NO_CTX, stubFetch, textOf } from "./helpers.ts";
 
 const PAGE_URL = "https://example.com/article";
@@ -247,9 +248,11 @@ test("kagi_extract throws on whole-call HTTP failures", async () => {
   await assert.rejects(
     () => makeExtractTool(fetchImpl).execute("call-1", { url: PAGE_URL }, undefined, undefined, NO_CTX),
     (error: unknown) => {
-      assert.ok(error instanceof Error);
+      assert.ok(error instanceof KagiApiError);
+      assert.equal(error.operation, "extract", "the operation names the failing capability");
+      assert.equal(error.status, 500);
+      assert.equal(error.trace, "trace-500");
       assert.ok(error.message.includes("Kagi extract failed: Kagi server error"));
-      assert.ok(error.message.includes("trace-500"));
       return true;
     },
   );
@@ -279,7 +282,9 @@ test("kagi_extract times out with a plain-language message", async () => {
   await assert.rejects(
     () => tool.execute("call-1", { url: PAGE_URL }, undefined, undefined, NO_CTX),
     (error: unknown) => {
-      assert.ok(error instanceof Error);
+      assert.ok(error instanceof KagiTimeoutError);
+      assert.equal(error.operation, "extract");
+      assert.equal(error.timeoutMs, 10);
       assert.ok(error.message.includes("timed out"));
       return true;
     },

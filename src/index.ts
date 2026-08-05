@@ -5,6 +5,10 @@ import { createExtractTool, PAGE_CACHE_MAX_ENTRIES } from "./extract-tool.ts";
 import { createSearchTool, SEARCH_CACHE_MAX_ENTRIES } from "./search-tool.ts";
 import SearchBudget from "./search-budget.ts";
 
+// Whole-call failures are part of this package's interface: callers that
+// branch on a bad key versus a rate limit need the classes, not the prose.
+export { KagiApiError, KagiRequestError, KagiTimeoutError, MissingApiKeyError } from "./errors.ts";
+
 export interface KagiToolsOptions {
   fetchImpl: typeof fetch;
   getApiKey: () => string | undefined;

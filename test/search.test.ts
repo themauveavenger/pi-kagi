@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { createKagiTools } from "../src/index.ts";
+import { KagiApiError, KagiRequestError, KagiTimeoutError, MissingApiKeyError } from "../src/errors.ts";
 import SearchBudget from "../src/search-budget.ts";
 import { jsonResponse, NO_CTX, stubFetch, textOf } from "./helpers.ts";
 
@@ -86,7 +87,7 @@ test("kagi_search throws setup instructions when KAGI_API_KEY is missing", async
   await assert.rejects(
     () => tool.execute("call-1", { query: "steve jobs" }, undefined, undefined, NO_CTX),
     (error: unknown) => {
-      assert.ok(error instanceof Error);
+      assert.ok(error instanceof MissingApiKeyError);
       assert.ok(error.message.includes("KAGI_API_KEY"));
       assert.ok(error.message.includes("https://kagi.com/api/keys"));
       return true;
@@ -128,13 +129,15 @@ test("kagi_search maps HTTP errors to plain-language messages with trace and det
       await assert.rejects(
         () => tool.execute("call-1", { query: "steve jobs" }, undefined, undefined, NO_CTX),
         (error: unknown) => {
-          assert.ok(error instanceof Error);
+          assert.ok(error instanceof KagiApiError);
+          assert.equal(error.status, status);
+          assert.equal(error.operation, "search");
+          assert.equal(error.trace, `trace-${status}`);
+          assert.equal(error.detail, "It broke");
           assert.ok(
             error.message.toLowerCase().includes(match.toLowerCase()),
             `"${error.message}" should mention ${match}`,
           );
-          assert.ok(error.message.includes("It broke"), "should include the API error detail");
-          assert.ok(error.message.includes(`trace-${status}`), "should include the trace id");
           return true;
         },
       );
@@ -149,7 +152,9 @@ test("kagi_search tolerates a non-JSON error body", async () => {
   await assert.rejects(
     () => tool.execute("call-1", { query: "steve jobs" }, undefined, undefined, NO_CTX),
     (error: unknown) => {
-      assert.ok(error instanceof Error);
+      assert.ok(error instanceof KagiApiError);
+      assert.equal(error.status, 500);
+      assert.equal(error.trace, undefined);
       assert.ok(error.message.includes("server error"));
       assert.ok(
         error.cause instanceof Error,
@@ -172,7 +177,8 @@ test("kagi_search ignores a trace on a body that is not a real error envelope", 
   await assert.rejects(
     () => tool.execute("call-1", { query: "steve jobs" }, undefined, undefined, NO_CTX),
     (error: unknown) => {
-      assert.ok(error instanceof Error);
+      assert.ok(error instanceof KagiApiError);
+      assert.equal(error.trace, undefined, "must not adopt a trace from a non-envelope body");
       assert.ok(error.message.includes("server error"), "should mention the status");
       assert.ok(
         !error.message.includes("should-not-leak"),
@@ -190,9 +196,11 @@ test("kagi_search wraps network failures in plain language", async () => {
   await assert.rejects(
     () => tool.execute("call-1", { query: "steve jobs" }, undefined, undefined, NO_CTX),
     (error: unknown) => {
-      assert.ok(error instanceof Error);
+      assert.ok(error instanceof KagiRequestError);
+      assert.equal(error.operation, "search");
       assert.ok(error.message.includes("Kagi search request failed"));
       assert.ok(error.message.includes("ENOTFOUND"));
+      assert.ok(error.cause instanceof TypeError, "should keep the transport failure as the cause");
       return true;
     },
   );
@@ -210,7 +218,8 @@ test("kagi_search times out with a plain-language message", async () => {
   await assert.rejects(
     () => tool.execute("call-1", { query: "steve jobs" }, undefined, undefined, NO_CTX),
     (error: unknown) => {
-      assert.ok(error instanceof Error);
+      assert.ok(error instanceof KagiTimeoutError);
+      assert.equal(error.timeoutMs, 10);
       assert.ok(error.message.includes("timed out"));
       return true;
     },
