@@ -37,16 +37,20 @@ A Kagi API invocation the user is billed for. Cache hits are not paid calls; cac
 _Avoid_: API call, request, fetch
 
 **Search budget**:
-The maximum number of paid `kagi_search` calls permitted during one agent run. Cache hits do not consume it; each new agent run receives a fresh budget.
+The maximum number of paid `kagi_search` calls permitted during one agent run. Cache hits do not consume it; each new agent run receives a fresh budget. Carries a lifecycle state — `idle` (no run yet), `active` (run in progress), `settled` (run finished, count retained) — which the footer wording follows.
 _Avoid_: search allowance, search limit
 
 **Agent run**:
-Pi's active work period, from `agent_start` until `agent_settled`. A settled run retains its search-budget count for status display.
+Pi's active work period, from `agent_start` until `agent_settled`. Ends when control returns to the human, which is why the search budget is scoped to it rather than to a single model turn. A settled run retains its search-budget count for status display.
 _Avoid_: task, turn
 
 **Cache marker**:
 The `(from cache)` suffix in tool output that tells both user and agent a result came from the cache — no paid call occurred, and the data may be stale.
 _Avoid_: from-cache tag, cache flag
+
+**Shared cache**:
+The search and page caches held in module scope so they outlive a session switch. pi re-invokes the extension factory per session but does not re-import the module, so module scope is what survives `/new` and `/resume`; `/reload` and a cwd change clear it.
+_Avoid_: global cache, persistent cache (nothing is written to disk)
 
 **Trace**:
 Kagi's request identifier returned in error responses, surfaced to the user for debugging or support contact.

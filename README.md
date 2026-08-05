@@ -99,13 +99,22 @@ Search the web with Kagi. Returns a compact markdown list of results.
 | `limit` | integer 1–25 | 10 | Client-side slice; **not** sent to the API. |
 | `offset` | integer ≥ 1 | 1 | 1-based index to page into the cached result set; no new paid call. |
 
-The full single-pass result set for a query is cached in memory (process lifetime, FIFO eviction at 50 queries), so paging with `offset`/`limit` and repeating identical queries both cost nothing. Cache hits are marked `(from cache)`. Non-web result types present in the response (news, direct answers, infoboxes, related searches) are rendered as labeled sections; machine-only noise (`props`, proxy image URLs, language probabilities) is stripped.
+The full single-pass result set for a query is cached in memory (see [Cache lifetime](#cache-lifetime), FIFO eviction at 50 queries), so paging with `offset`/`limit` and repeating identical queries both cost nothing. Cache hits are marked `(from cache)`. Non-web result types present in the response (news, direct answers, infoboxes, related searches) are rendered as labeled sections; machine-only noise (`props`, proxy image URLs, language probabilities) is stripped.
 
 ### Search budget and status
 
 `kagi_search` permits at most two uncached searches while pi works on one prompt. The allowance resets only after pi settles and control returns to you. Cached repeats and pagination are free and do not count; `kagi_extract` is not capped.
 
-The footer shows the active search allowance plus paid-search, paid-extract, and cache-hit totals. Hide or restore it for the current session with `/kagi status off` or `/kagi status on`.
+The footer shows the search budget plus paid-search, paid-extract, and cache-hit totals. Its wording follows the run lifecycle, so a count left on screen while you have control is never mistaken for a standing cap:
+
+| Footer text | Meaning |
+| --- | --- |
+| `search 0/2 per run` | No run has begun yet in this session — the number is the per-run allowance. |
+| `search 1/2 this run` | A run is in progress with budget left. |
+| `search 2/2 this run (limit reached)` | A run is in progress and has spent its budget. |
+| `search 2/2 last run · resets next run` | The run finished; that was its cost, and the next run starts fresh. |
+
+Hide or restore the footer for the current session with `/kagi status off` or `/kagi status on`.
 
 ### `kagi_extract`
 
@@ -117,7 +126,17 @@ Extract a single web page's content as markdown. Long pages are paged with `offs
 | `limit` | integer 1–2000 | 250 | Lines of extracted markdown to return. |
 | `offset` | integer ≥ 1 | 1 | 1-based line number to start from. |
 
-Extracted pages are cached by URL (process lifetime, FIFO eviction at 100 pages), so reading further slices of the same page is free. A page that fails extraction inside an otherwise-successful call returns its failure reason as ordinary content (not a tool error) so the agent can fall back to the search snippet. Whole-call HTTP failures throw with a plain-language message including Kagi's error code and `meta.trace` ID. Every tool response is backstopped by a 50 KB byte cap regardless of line limits.
+Extracted pages are cached by URL (see [Cache lifetime](#cache-lifetime), FIFO eviction at 100 pages), so reading further slices of the same page is free. A page that fails extraction inside an otherwise-successful call returns its failure reason as ordinary content (not a tool error) so the agent can fall back to the search snippet. Whole-call HTTP failures throw with a plain-language message including Kagi's error code and `meta.trace` ID. Every tool response is backstopped by a 50 KB byte cap regardless of line limits.
+
+### Cache lifetime
+
+Both caches live in module scope, so they are shared across sessions: a page or query paid for before `/new` or `/resume` is still free afterwards. pi caches the extension factory and re-invokes it per session rather than re-importing the module, so factory-local state would not survive a session switch — module-level state does.
+
+The caches are dropped only by `/reload`, which clears pi's extension cache and re-evaluates the module, and by switching to a different working directory, which must not leak results across projects. Neither cache has a TTL; entries live until FIFO eviction, so a cached result can be stale. Use `refresh: true` on `kagi_extract` for a page that may have changed.
+
+The search budget and the footer's paid/cache counters are deliberately *not* shared: the budget is per run, and a new session's counters start at zero.
+
+Because the caches outlive the extension factory, they also outlive an individual test. `resetSharedCaches()` is exported for tests that load the extension more than once and need each case to start cold.
 
 ## Releases
 

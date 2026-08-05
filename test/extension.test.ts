@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
-import { test } from "node:test";
+import { beforeEach, test } from "node:test";
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
-import extension from "../src/index.ts";
+import extension, { resetSharedCaches } from "../src/index.ts";
 
 type ToolDefinition = Parameters<ExtensionAPI["registerTool"]>[0];
 
@@ -41,6 +41,13 @@ function eventHandler(eventHandlers: Map<string, EventHandler[]>, eventName: str
   assert.ok(handler, `extension must register a ${eventName} handler`);
   return handler;
 }
+
+// The search and page caches live in module scope so they survive a session
+// switch, which also means they survive between tests. Empty them so no
+// case can be handed a cache hit left behind by an earlier one.
+beforeEach(() => {
+  resetSharedCaches();
+});
 
 test("extension registers kagi_search and kagi_extract tools", () => {
   const { tools, pi } = captureRegistrations();
@@ -82,10 +89,17 @@ test("extension preserves a settled run's search count and resets it when the ne
     );
 
     await agentStart({} as never, lifecycleCtx as never);
-    assert.ok(statuses.at(-1)?.includes("search 2/2 this run"), "a repeated start does not reset the active run");
+    assert.ok(
+      statuses.at(-1)?.includes("search 2/2 this run (limit reached)"),
+      "a repeated start does not reset the active run, and an exhausted live run says so",
+    );
 
     await eventHandler(eventHandlers, "agent_settled")({} as never, lifecycleCtx as never);
-    assert.ok(statuses.at(-1)?.includes("search 2/2 this run"), "the settled run remains visible in the footer");
+    assert.ok(statuses.at(-1)?.includes("search 2/2 last run"), "the settled run remains visible in the footer");
+    assert.ok(
+      statuses.at(-1)?.includes("resets next run"),
+      "a settled run that hit the limit promises the reset",
+    );
 
     await agentStart({} as never, lifecycleCtx as never);
     assert.ok(statuses.at(-1)?.includes("search 0/2 this run"), "the next run receives a fresh budget");
@@ -114,6 +128,42 @@ test("kagi footer status is visible by default and can be toggled off", async ()
   assert.equal(statuses.at(-1), undefined);
 });
 
+test("a session with no run yet reports the cap as a per-run allowance, not a spent budget", async () => {
+  const { eventHandlers, pi } = captureRegistrations();
+  const statuses: Array<string | undefined> = [];
+  const ctx = {
+    ui: { setStatus: (_key: string, value: string | undefined) => statuses.push(value) },
+    sessionManager: { getBranch: () => [] },
+  };
+  extension(pi);
+
+  // Startup, and equally a resumed or forked session: pi re-invokes the
+  // extension factory, so the budget has no run to report.
+  await eventHandler(eventHandlers, "session_start")({} as never, ctx as never);
+  assert.ok(statuses.at(-1)?.includes("search 0/2 per run"), "an idle budget describes the allowance");
+  assert.ok(!statuses.at(-1)?.includes("last run"), "an idle budget must not claim a run happened");
+
+  // A stray settle without a run must not invent a "last run" either.
+  await eventHandler(eventHandlers, "agent_settled")({} as never, ctx as never);
+  assert.ok(statuses.at(-1)?.includes("search 0/2 per run"), "settling without a run leaves the budget idle");
+});
+
+test("a settled run that spent nothing does not advertise a reset", async () => {
+  const { eventHandlers, pi } = captureRegistrations();
+  const statuses: Array<string | undefined> = [];
+  const ctx = {
+    ui: { setStatus: (_key: string, value: string | undefined) => statuses.push(value) },
+    sessionManager: { getBranch: () => [] },
+  };
+  extension(pi);
+
+  await eventHandler(eventHandlers, "agent_start")({} as never, ctx as never);
+  await eventHandler(eventHandlers, "agent_settled")({} as never, ctx as never);
+
+  assert.ok(statuses.at(-1)?.includes("search 0/2 last run"), "the settled run is still reported");
+  assert.ok(!statuses.at(-1)?.includes("resets next run"), "there is no spent budget to promise back");
+});
+
 test("kagi footer status counts paid calls and cache hits", async () => {
   const { eventHandlers, pi } = captureRegistrations();
   const statuses: Array<string | undefined> = [];
@@ -134,6 +184,86 @@ test("kagi footer status counts paid calls and cache hits", async () => {
   );
 
   assert.ok(statuses.at(-1)?.includes("paid S:1 E:0 · cache:1"));
+});
+
+test("caches outlive the extension factory so a resumed or new session still reads them", async () => {
+  const originalFetch = globalThis.fetch;
+  const originalKey = process.env.KAGI_API_KEY;
+  let calls = 0;
+  globalThis.fetch = (async () => {
+    calls++;
+    return new Response(JSON.stringify({ data: { search: [] } }), { status: 200 });
+  }) as typeof fetch;
+  process.env.KAGI_API_KEY = "test-key";
+
+  try {
+    // pi re-invokes the extension factory for each new/resumed session
+    // rather than re-importing the module, so two loads stand in for a
+    // session switch.
+    const first = captureRegistrations();
+    extension(first.pi);
+    const firstSearch = first.tools.find((tool) => tool.name === "kagi_search");
+    assert.ok(firstSearch, "extension registers kagi_search");
+    await eventHandler(first.eventHandlers, "agent_start")({} as never, {
+      ui: { setStatus: () => {} },
+      sessionManager: { getBranch: () => [] },
+    } as never);
+    await firstSearch.execute("call-1", { query: "shared" }, undefined, undefined, undefined as never);
+    assert.equal(calls, 1, "the first session pays for the search");
+
+    const second = captureRegistrations();
+    extension(second.pi);
+    const secondSearch = second.tools.find((tool) => tool.name === "kagi_search");
+    assert.ok(secondSearch, "extension registers kagi_search");
+    await eventHandler(second.eventHandlers, "agent_start")({} as never, {
+      ui: { setStatus: () => {} },
+      sessionManager: { getBranch: () => [] },
+    } as never);
+    const result = await secondSearch.execute("call-2", { query: "shared" }, undefined, undefined, undefined as never);
+
+    assert.equal(calls, 1, "the second session reuses the cached result set");
+    assert.deepEqual(result.details, { kagi: { source: "cache" } });
+  } finally {
+    globalThis.fetch = originalFetch;
+    if (originalKey === undefined) delete process.env.KAGI_API_KEY;
+    else process.env.KAGI_API_KEY = originalKey;
+  }
+});
+
+test("resetSharedCaches empties the caches that outlive the factory", async () => {
+  const originalFetch = globalThis.fetch;
+  const originalKey = process.env.KAGI_API_KEY;
+  let calls = 0;
+  globalThis.fetch = (async () => {
+    calls++;
+    return new Response(JSON.stringify({ data: { search: [] } }), { status: 200 });
+  }) as typeof fetch;
+  process.env.KAGI_API_KEY = "test-key";
+
+  try {
+    const { tools, eventHandlers, pi } = captureRegistrations();
+    extension(pi);
+    const search = tools.find((tool) => tool.name === "kagi_search");
+    assert.ok(search, "extension registers kagi_search");
+    await eventHandler(eventHandlers, "agent_start")({} as never, {
+      ui: { setStatus: () => {} },
+      sessionManager: { getBranch: () => [] },
+    } as never);
+
+    await search.execute("call-1", { query: "resettable" }, undefined, undefined, undefined as never);
+    await search.execute("call-2", { query: "resettable" }, undefined, undefined, undefined as never);
+    assert.equal(calls, 1, "the repeat is served from cache");
+
+    resetSharedCaches();
+    const result = await search.execute("call-3", { query: "resettable" }, undefined, undefined, undefined as never);
+
+    assert.equal(calls, 2, "after a reset the same query pays again");
+    assert.deepEqual(result.details, { kagi: { source: "paid" } });
+  } finally {
+    globalThis.fetch = originalFetch;
+    if (originalKey === undefined) delete process.env.KAGI_API_KEY;
+    else process.env.KAGI_API_KEY = originalKey;
+  }
 });
 
 test("registered tools carry the metadata pi needs to present them", () => {

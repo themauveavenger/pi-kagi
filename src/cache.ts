@@ -14,6 +14,10 @@
  * next call instead of being pinned by FIFO pressure. The cache stays pure
  * of cancellation/AbortSignal concerns — `signal` threads through the
  * caller's closure into the producer, never through this interface.
+ *
+ * `clear` drops every entry while keeping the cache's identity, so holders
+ * of a reference keep working against the now-empty cache. It exists for
+ * tests that need isolation from module-level shared caches.
  */
 export interface BoundedCache<K, V> {
   lookup(
@@ -26,6 +30,7 @@ export interface BoundedCache<K, V> {
     miss: (key: K) => Promise<V>,
     shouldCache?: (value: V) => boolean,
   ): Promise<{ value: V; fromCache: boolean }>;
+  clear(): void;
 }
 
 export function createBoundedCache<K, V>(maxEntries: number): BoundedCache<K, V> {
@@ -64,6 +69,9 @@ export function createBoundedCache<K, V>(maxEntries: number): BoundedCache<K, V>
         evictIfNeeded();
       }
       return { value, fromCache: false };
+    },
+    clear() {
+      entries.clear();
     },
   };
 }

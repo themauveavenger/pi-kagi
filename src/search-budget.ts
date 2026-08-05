@@ -7,12 +7,23 @@ export class BudgetExhaustedError extends Error {
 }
 
 /**
+ * Where the budget sits in the agent-run lifecycle:
+ * - `idle`    — no run has begun yet in this extension instance (fresh
+ *               startup, or a session just resumed/forked). The count is
+ *               not a record of anything.
+ * - `active`  — between `agent_start` and `agent_settled`; the count is live.
+ * - `settled` — a run finished; the count is a record of that run and will
+ *               reset when the next run begins.
+ */
+export type BudgetState = "idle" | "active" | "settled";
+
+/**
  * Limits paid searches for one agent run. Cache hits never reach reserve(),
  * so they remain free and do not consume the allowance.
  */
 export default class SearchBudget {
   private used = 0;
-  private active = false;
+  private state: BudgetState = "idle";
   private readonly limit: number;
 
   constructor(limit: number) {
@@ -23,14 +34,20 @@ export default class SearchBudget {
   }
 
   beginRun(): void {
-    if (this.active) return;
+    if (this.state === "active") return;
     this.used = 0;
-    this.active = true;
+    this.state = "active";
   }
 
   settleRun(): void {
-    // Retain the count for the settled run's status display.
-    this.active = false;
+    // Retain the count for the settled run's status display. Settling
+    // without a run leaves the budget idle, so the status never claims a
+    // "last run" that never happened.
+    if (this.state === "active") this.state = "settled";
+  }
+
+  getState(): BudgetState {
+    return this.state;
   }
 
   getUsed(): number {
