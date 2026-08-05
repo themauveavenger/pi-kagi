@@ -100,12 +100,20 @@ export default function (pi: ExtensionAPI) {
 
   function restoreStatusPreference(ctx: { sessionManager: { getBranch(): unknown[] } }): void {
     for (const entry of ctx.sessionManager.getBranch()) {
-      if (typeof entry !== "object" || entry === null) {continue;}
+      if (typeof entry !== "object" || entry === null) {
+        continue;
+      }
       const candidate = entry as { type?: unknown; customType?: unknown; data?: unknown };
-      if (candidate.type !== "custom" || candidate.customType !== "kagi-settings") {continue;}
-      if (typeof candidate.data !== "object" || candidate.data === null) {continue;}
+      if (candidate.type !== "custom" || candidate.customType !== "kagi-settings") {
+        continue;
+      }
+      if (typeof candidate.data !== "object" || candidate.data === null) {
+        continue;
+      }
       const data = candidate.data as { showStatus?: unknown };
-      if (typeof data.showStatus === "boolean") {showStatus = data.showStatus;}
+      if (typeof data.showStatus === "boolean") {
+        showStatus = data.showStatus;
+      }
     }
   }
 
@@ -122,14 +130,22 @@ export default function (pi: ExtensionAPI) {
     event: { toolName: string; details: unknown },
     ctx: Parameters<typeof updateStatus>[0],
   ): void {
-    if (event.toolName !== "kagi_search" && event.toolName !== "kagi_extract") {return;}
+    if (event.toolName !== "kagi_search" && event.toolName !== "kagi_extract") {
+      return;
+    }
 
     const source = readKagiSource(event.details);
-    if (source === undefined) {return;}
+    if (source === undefined) {
+      return;
+    }
 
-    if (source === "cache") {cacheHits++;}
-    else if (event.toolName === "kagi_search") {paidSearches++;}
-    else {paidExtracts++;}
+    if (source === "cache") {
+      cacheHits++;
+    } else if (event.toolName === "kagi_search") {
+      paidSearches++;
+    } else {
+      paidExtracts++;
+    }
 
     updateStatus(ctx);
   }

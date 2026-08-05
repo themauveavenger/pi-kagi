@@ -156,10 +156,7 @@ test("kagi_search tolerates a non-JSON error body", async () => {
       assert.equal(error.status, 500);
       assert.equal(error.trace, undefined);
       assert.ok(error.message.includes("server error"));
-      assert.ok(
-        error.cause instanceof Error,
-        "should keep the body-parse failure as the cause for debugging",
-      );
+      assert.ok(error.cause instanceof Error, "should keep the body-parse failure as the cause for debugging");
       return true;
     },
   );
@@ -180,10 +177,7 @@ test("kagi_search ignores a trace on a body that is not a real error envelope", 
       assert.ok(error instanceof KagiApiError);
       assert.equal(error.trace, undefined, "must not adopt a trace from a non-envelope body");
       assert.ok(error.message.includes("server error"), "should mention the status");
-      assert.ok(
-        !error.message.includes("should-not-leak"),
-        "must not adopt a trace from a non-envelope body",
-      );
+      assert.ok(!error.message.includes("should-not-leak"), "must not adopt a trace from a non-envelope body");
       return true;
     },
   );

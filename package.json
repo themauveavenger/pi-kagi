@@ -25,7 +25,9 @@
     "typecheck": "tsc --noEmit",
     "arch": "ts-archunit check",
     "arch:baseline": "ts-archunit baseline",
-    "lint": "eslint ."
+    "lint": "eslint .",
+    "format": "prettier --write \"**/*.ts\"",
+    "format:check": "prettier --check \"**/*.ts\""
   },
   "peerDependencies": {
     "@earendil-works/pi-coding-agent": "*",

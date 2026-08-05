@@ -141,7 +141,10 @@ test("kagi_extract returns per-page extraction failures as ordinary content and 
   const stub = stubFetch(() => {
     // First two calls return a per-page error; later calls return a successful page.
     if (stub.calls.length <= 2) {
-      return jsonResponse({ meta: { trace: "t" }, data: [{ url: PAGE_URL, error: "failed to fetch page: 403 Forbidden" }] });
+      return jsonResponse({
+        meta: { trace: "t" },
+        data: [{ url: PAGE_URL, error: "failed to fetch page: 403 Forbidden" }],
+      });
     }
     return jsonResponse(extractResponse(pageFixture(3)));
   });
@@ -228,21 +231,30 @@ test("a per-page extraction failure never evicts a cached page to make room for 
 
   // p1 must still be in the cache: the failure was never written, so it
   // never displaced anything.
-  const stillCached = await tool.execute("call-p1-again", { url: "https://example.com/p1" }, undefined, undefined, NO_CTX);
+  const stillCached = await tool.execute(
+    "call-p1-again",
+    { url: "https://example.com/p1" },
+    undefined,
+    undefined,
+    NO_CTX,
+  );
   assert.ok(textOf(stillCached).includes("(from cache)"), "p1 was not evicted by the failed extract");
   assert.equal(calls.length, 101, "no new fetch — p1 came from the cache");
 
   // And the error URL itself must not be cached: retrying it fetches again.
-  const retry = await tool.execute("call-fail-retry", { url: "https://example.com/p101" }, undefined, undefined, NO_CTX);
+  const retry = await tool.execute(
+    "call-fail-retry",
+    { url: "https://example.com/p101" },
+    undefined,
+    undefined,
+    NO_CTX,
+  );
   assert.equal(calls.length, 102, "the failed URL is not cached, so retrying it re-fetches");
 });
 
 test("kagi_extract throws on whole-call HTTP failures", async () => {
   const { fetchImpl } = stubFetch(() =>
-    jsonResponse(
-      { meta: { trace: "trace-500" }, data: null, error: [{ code: "boom", message: "It broke" }] },
-      500,
-    ),
+    jsonResponse({ meta: { trace: "trace-500" }, data: null, error: [{ code: "boom", message: "It broke" }] }, 500),
   );
 
   await assert.rejects(
@@ -264,7 +276,14 @@ test("kagi_extract throws setup instructions when KAGI_API_KEY is missing", asyn
   });
 
   await assert.rejects(
-    () => makeExtractTool(fetchImpl, { apiKey: undefined }).execute("call-1", { url: PAGE_URL }, undefined, undefined, NO_CTX),
+    () =>
+      makeExtractTool(fetchImpl, { apiKey: undefined }).execute(
+        "call-1",
+        { url: PAGE_URL },
+        undefined,
+        undefined,
+        NO_CTX,
+      ),
     /KAGI_API_KEY/,
   );
   assert.equal(calls.length, 0);
@@ -292,7 +311,10 @@ test("kagi_extract times out with a plain-language message", async () => {
 });
 
 test("kagi_extract caps oversized output at 50KB", async () => {
-  const bigPage = Array.from({ length: 1000 }, (_, i) => `Line ${String(i + 1).padStart(4, "0")} ${"x".repeat(50)}`).join("\n");
+  const bigPage = Array.from(
+    { length: 1000 },
+    (_, i) => `Line ${String(i + 1).padStart(4, "0")} ${"x".repeat(50)}`,
+  ).join("\n");
   const { fetchImpl } = stubFetch(() => jsonResponse(extractResponse(bigPage)));
 
   const result = await makeExtractTool(fetchImpl).execute(

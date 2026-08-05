@@ -24,9 +24,13 @@ export interface KagiToolDetails {
  * not as an error.
  */
 export function readKagiSource(details: unknown): KagiToolSource | undefined {
-  if (typeof details !== "object" || details === null) {return undefined;}
+  if (typeof details !== "object" || details === null) {
+    return undefined;
+  }
   const kagi = (details as { kagi?: unknown }).kagi;
-  if (typeof kagi !== "object" || kagi === null) {return undefined;}
+  if (typeof kagi !== "object" || kagi === null) {
+    return undefined;
+  }
   const source = (kagi as { source?: unknown }).source;
   return source === "cache" || source === "paid" ? source : undefined;
 }

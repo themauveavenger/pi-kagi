@@ -96,10 +96,7 @@ test("extension preserves a settled run's search count and resets it when the ne
 
     await eventHandler(eventHandlers, "agent_settled")({} as never, lifecycleCtx as never);
     assert.ok(statuses.at(-1)?.includes("search 2/2 last run"), "the settled run remains visible in the footer");
-    assert.ok(
-      statuses.at(-1)?.includes("resets next run"),
-      "a settled run that hit the limit promises the reset",
-    );
+    assert.ok(statuses.at(-1)?.includes("resets next run"), "a settled run that hit the limit promises the reset");
 
     await agentStart({} as never, lifecycleCtx as never);
     assert.ok(statuses.at(-1)?.includes("search 0/2 this run"), "the next run receives a fresh budget");
@@ -208,10 +205,13 @@ test("caches outlive the extension factory so a resumed or new session still rea
     extension(first.pi);
     const firstSearch = first.tools.find((tool) => tool.name === "kagi_search");
     assert.ok(firstSearch, "extension registers kagi_search");
-    await eventHandler(first.eventHandlers, "agent_start")({} as never, {
-      ui: { setStatus: () => {} },
-      sessionManager: { getBranch: () => [] },
-    } as never);
+    await eventHandler(first.eventHandlers, "agent_start")(
+      {} as never,
+      {
+        ui: { setStatus: () => {} },
+        sessionManager: { getBranch: () => [] },
+      } as never,
+    );
     await firstSearch.execute("call-1", { query: "shared" }, undefined, undefined, undefined as never);
     assert.equal(calls, 1, "the first session pays for the search");
 
@@ -219,18 +219,24 @@ test("caches outlive the extension factory so a resumed or new session still rea
     extension(second.pi);
     const secondSearch = second.tools.find((tool) => tool.name === "kagi_search");
     assert.ok(secondSearch, "extension registers kagi_search");
-    await eventHandler(second.eventHandlers, "agent_start")({} as never, {
-      ui: { setStatus: () => {} },
-      sessionManager: { getBranch: () => [] },
-    } as never);
+    await eventHandler(second.eventHandlers, "agent_start")(
+      {} as never,
+      {
+        ui: { setStatus: () => {} },
+        sessionManager: { getBranch: () => [] },
+      } as never,
+    );
     const result = await secondSearch.execute("call-2", { query: "shared" }, undefined, undefined, undefined as never);
 
     assert.equal(calls, 1, "the second session reuses the cached result set");
     assert.deepEqual(result.details, { kagi: { source: "cache" } });
   } finally {
     globalThis.fetch = originalFetch;
-    if (originalKey === undefined) {delete process.env.KAGI_API_KEY;}
-    else {process.env.KAGI_API_KEY = originalKey;}
+    if (originalKey === undefined) {
+      delete process.env.KAGI_API_KEY;
+    } else {
+      process.env.KAGI_API_KEY = originalKey;
+    }
   }
 });
 
@@ -249,10 +255,13 @@ test("resetSharedCaches empties the caches that outlive the factory", async () =
     extension(pi);
     const search = tools.find((tool) => tool.name === "kagi_search");
     assert.ok(search, "extension registers kagi_search");
-    await eventHandler(eventHandlers, "agent_start")({} as never, {
-      ui: { setStatus: () => {} },
-      sessionManager: { getBranch: () => [] },
-    } as never);
+    await eventHandler(eventHandlers, "agent_start")(
+      {} as never,
+      {
+        ui: { setStatus: () => {} },
+        sessionManager: { getBranch: () => [] },
+      } as never,
+    );
 
     await search.execute("call-1", { query: "resettable" }, undefined, undefined, undefined as never);
     await search.execute("call-2", { query: "resettable" }, undefined, undefined, undefined as never);
@@ -265,8 +274,11 @@ test("resetSharedCaches empties the caches that outlive the factory", async () =
     assert.deepEqual(result.details, { kagi: { source: "paid" } });
   } finally {
     globalThis.fetch = originalFetch;
-    if (originalKey === undefined) {delete process.env.KAGI_API_KEY;}
-    else {process.env.KAGI_API_KEY = originalKey;}
+    if (originalKey === undefined) {
+      delete process.env.KAGI_API_KEY;
+    } else {
+      process.env.KAGI_API_KEY = originalKey;
+    }
   }
 });
 
@@ -278,10 +290,7 @@ test("registered tools carry the metadata pi needs to present them", () => {
   for (const tool of tools) {
     assert.ok(tool.label.length > 0, `${tool.name} needs a label`);
     assert.ok(tool.description.length > 0, `${tool.name} needs a description`);
-    assert.ok(
-      "type" in tool.parameters && tool.parameters.type === "object",
-      `${tool.name} needs an object schema`,
-    );
+    assert.ok("type" in tool.parameters && tool.parameters.type === "object", `${tool.name} needs an object schema`);
   }
 });
 
@@ -305,10 +314,7 @@ test("tools declare prompt snippets and cost-conscious guidelines that name the 
 
   for (const tool of tools) {
     assert.ok(tool.promptSnippet && tool.promptSnippet.length > 0, `${tool.name} needs a promptSnippet`);
-    assert.ok(
-      tool.promptGuidelines && tool.promptGuidelines.length > 0,
-      `${tool.name} needs promptGuidelines`,
-    );
+    assert.ok(tool.promptGuidelines && tool.promptGuidelines.length > 0, `${tool.name} needs promptGuidelines`);
     for (const guideline of tool.promptGuidelines) {
       // pi appends guidelines flat to the Guidelines section with no tool
       // name prefix, so each must name its tool to be attributable.

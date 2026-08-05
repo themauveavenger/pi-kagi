@@ -1,0 +1,6 @@
+node_modules
+package-lock.json
+arch-baseline.json
+
+# Vendored copy of Kagi's own OpenAPI spec — keep it diffable against upstream.
+docs/kagi_openapi.yaml

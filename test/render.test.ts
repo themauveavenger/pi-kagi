@@ -16,7 +16,10 @@ const testTheme = {
 } as unknown as Theme;
 
 function plain(component: Component, width = 200): string {
-  return component.render(width).join("\n").replace(/<\/?[^>]+>/g, "");
+  return component
+    .render(width)
+    .join("\n")
+    .replace(/<\/?[^>]+>/g, "");
 }
 
 type ToolDefinitionAny = Parameters<ExtensionAPI["registerTool"]>[0];
@@ -58,10 +61,7 @@ test("kagi_search renderResult (expanded) shows the formatted result text", () =
   const component = tool.renderResult!(result, { expanded: true, isPartial: false }, testTheme, ctx);
 
   const text = plain(component);
-  assert.ok(
-    text.includes("1. [Example](https://example.com)"),
-    `expected result body in expanded view, got: ${text}`,
-  );
+  assert.ok(text.includes("1. [Example](https://example.com)"), `expected result body in expanded view, got: ${text}`);
 });
 
 test("kagi_search renderResult (collapsed) hides the query (renderCall already shows it)", () => {
@@ -80,17 +80,14 @@ test("kagi_search renderResult (collapsed) hides the query (renderCall already s
   const text = plain(component);
   // renderCall already displays the query; collapsed renderResult must not duplicate it.
   assert.ok(!text.includes("openai 5.6 release"), `query must not appear in collapsed result, got: ${text}`);
-  assert.ok(
-    !text.includes("https://example.com"),
-    `result body must not appear in collapsed view, got: ${text}`,
-  );
+  assert.ok(!text.includes("https://example.com"), `result body must not appear in collapsed view, got: ${text}`);
 });
 
 test("kagi_search renderResult (collapsed) shows 'from cache' when the result was cached", () => {
   const tool = findTool("kagi_search");
   assert.ok(tool.renderResult, "kagi_search needs renderResult");
 
-  const cached = "Showing results 1–3 of 3 for \"x\". (from cache)";
+  const cached = 'Showing results 1–3 of 3 for "x". (from cache)';
   const result = { content: [{ type: "text" as const, text: cached }], details: {} };
   const ctx = { args: { query: "x", limit: 10, offset: 1 } } as Parameters<
     NonNullable<ToolDefinition["renderResult"]>
@@ -117,7 +114,7 @@ test("kagi_search renderResult (collapsed) shows limit/offset when non-default",
   assert.ok(text.includes("offset=11"), `expected offset annotation, got: ${text}`);
   assert.ok(text.includes("limit=5"), `expected limit annotation, got: ${text}`);
   // Query must not leak from the collapsed result (renderCall already shows it).
-  assert.ok(!text.includes("\"x\""), `query must not appear in collapsed result, got: ${text}`);
+  assert.ok(!text.includes('"x"'), `query must not appear in collapsed result, got: ${text}`);
 });
 
 test("kagi_search renderCall shows the tool name and query while running", () => {
