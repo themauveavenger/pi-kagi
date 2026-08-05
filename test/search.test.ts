@@ -151,6 +151,10 @@ test("kagi_search tolerates a non-JSON error body", async () => {
     (error: unknown) => {
       assert.ok(error instanceof Error);
       assert.ok(error.message.includes("server error"));
+      assert.ok(
+        error.cause instanceof Error,
+        "should keep the body-parse failure as the cause for debugging",
+      );
       return true;
     },
   );

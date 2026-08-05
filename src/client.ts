@@ -189,6 +189,10 @@ function normalizeFetchError(cause: unknown, operation: string, timeoutMs: numbe
 async function toApiError(response: Response, operation: string): Promise<Error> {
   let trace: string | undefined;
   let detail: string | undefined;
+  // Why the body could not be read, kept for the returned error's `cause`.
+  // The fall-through to a status-only message is deliberate, but discarding
+  // the reason would leave nothing to debug when the body was unexpected.
+  let bodyFailure: unknown;
 
   try {
     const body: unknown = await response.json();
@@ -197,8 +201,8 @@ async function toApiError(response: Response, operation: string): Promise<Error>
       trace = described.trace;
       detail = described.detail;
     }
-  } catch {
-    // Error body wasn't JSON — fall through to the status-only message.
+  } catch (cause) {
+    bodyFailure = cause;
   }
 
   const statusMessage = STATUS_MESSAGES[response.status] ?? `Kagi API error (HTTP ${response.status})`;
@@ -209,5 +213,5 @@ async function toApiError(response: Response, operation: string): Promise<Error>
   if (trace) {
     parts.push(`trace: ${trace}`);
   }
-  return new Error(parts.join(" — "));
+  return new Error(parts.join(" — "), bodyFailure === undefined ? undefined : { cause: bodyFailure });
 }
