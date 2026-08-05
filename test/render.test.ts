@@ -30,9 +30,15 @@ function captureRegistrations(): { tools: ToolDefinitionAny[]; pi: ExtensionAPI 
     registerTool(definition: ToolDefinitionAny) {
       tools.push(definition);
     },
-    on() {},
-    registerCommand() {},
-    appendEntry() {},
+    on() {
+      return undefined;
+    },
+    registerCommand() {
+      return undefined;
+    },
+    appendEntry() {
+      return undefined;
+    },
   } as unknown as ExtensionAPI;
   return { tools, pi };
 }

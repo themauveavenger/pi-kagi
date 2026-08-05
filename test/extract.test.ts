@@ -118,7 +118,7 @@ test("kagi_extract serves repeat extracts of a URL from cache", async () => {
 
 test("kagi_extract evicts the oldest cached page beyond 100 entries", async () => {
   const { calls, fetchImpl } = stubFetch(({ init }) => {
-    const body = JSON.parse(String(init.body)) as { pages: Array<{ url: string }> };
+    const body = JSON.parse(String(init.body)) as { pages: { url: string }[] };
     return jsonResponse(extractResponse(pageFixture(1), body.pages[0]?.url ?? PAGE_URL));
   });
   const tool = makeExtractTool(fetchImpl);
@@ -206,7 +206,7 @@ test("kagi_extract bypasses the cache and writes back when refresh is true", asy
 
 test("a per-page extraction failure never evicts a cached page to make room for itself", async () => {
   const { calls, fetchImpl } = stubFetch(({ init }) => {
-    const body = JSON.parse(String(init.body)) as { pages: Array<{ url: string }> };
+    const body = JSON.parse(String(init.body)) as { pages: { url: string }[] };
     const url = body.pages[0]?.url ?? PAGE_URL;
     // The 101st distinct URL fails; every other URL extracts normally.
     if (url.endsWith("/p101")) {
@@ -242,13 +242,7 @@ test("a per-page extraction failure never evicts a cached page to make room for 
   assert.equal(calls.length, 101, "no new fetch — p1 came from the cache");
 
   // And the error URL itself must not be cached: retrying it fetches again.
-  const retry = await tool.execute(
-    "call-fail-retry",
-    { url: "https://example.com/p101" },
-    undefined,
-    undefined,
-    NO_CTX,
-  );
+  await tool.execute("call-fail-retry", { url: "https://example.com/p101" }, undefined, undefined, NO_CTX);
   assert.equal(calls.length, 102, "the failed URL is not cached, so retrying it re-fetches");
 });
 

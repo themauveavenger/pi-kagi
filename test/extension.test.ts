@@ -31,7 +31,9 @@ function captureRegistrations(): {
     registerCommand(name: string, options: { handler: EventHandler }) {
       commands.set(name, options);
     },
-    appendEntry() {},
+    appendEntry() {
+      return undefined;
+    },
   } as unknown as ExtensionAPI;
   return { tools, eventHandlers, commands, pi };
 }
@@ -63,7 +65,7 @@ test("extension registers kagi_search and kagi_extract tools", () => {
 test("extension preserves a settled run's search count and resets it when the next run begins", async () => {
   const { tools, eventHandlers, pi } = captureRegistrations();
   const originalFetch = globalThis.fetch;
-  const statuses: Array<string | undefined> = [];
+  const statuses: (string | undefined)[] = [];
   let calls = 0;
   globalThis.fetch = (async () => {
     calls++;
@@ -109,7 +111,7 @@ test("extension preserves a settled run's search count and resets it when the ne
 
 test("kagi footer status is visible by default and toggles with each /kagi call", async () => {
   const { eventHandlers, commands, pi } = captureRegistrations();
-  const statuses: Array<string | undefined> = [];
+  const statuses: (string | undefined)[] = [];
   const ctx = {
     ui: { setStatus: (_key: string, value: string | undefined) => statuses.push(value) },
     sessionManager: { getBranch: () => [] },
@@ -131,7 +133,7 @@ test("kagi footer status is visible by default and toggles with each /kagi call"
 
 test("a session with no run yet reports the cap as a per-run allowance, not a spent budget", async () => {
   const { eventHandlers, pi } = captureRegistrations();
-  const statuses: Array<string | undefined> = [];
+  const statuses: (string | undefined)[] = [];
   const ctx = {
     ui: { setStatus: (_key: string, value: string | undefined) => statuses.push(value) },
     sessionManager: { getBranch: () => [] },
@@ -151,7 +153,7 @@ test("a session with no run yet reports the cap as a per-run allowance, not a sp
 
 test("a settled run that spent nothing does not advertise a reset", async () => {
   const { eventHandlers, pi } = captureRegistrations();
-  const statuses: Array<string | undefined> = [];
+  const statuses: (string | undefined)[] = [];
   const ctx = {
     ui: { setStatus: (_key: string, value: string | undefined) => statuses.push(value) },
     sessionManager: { getBranch: () => [] },
@@ -167,7 +169,7 @@ test("a settled run that spent nothing does not advertise a reset", async () => 
 
 test("kagi footer status counts paid calls and cache hits", async () => {
   const { eventHandlers, pi } = captureRegistrations();
-  const statuses: Array<string | undefined> = [];
+  const statuses: (string | undefined)[] = [];
   const ctx = {
     ui: { setStatus: (_key: string, value: string | undefined) => statuses.push(value) },
     sessionManager: { getBranch: () => [] },
@@ -208,7 +210,7 @@ test("caches outlive the extension factory so a resumed or new session still rea
     await eventHandler(first.eventHandlers, "agent_start")(
       {} as never,
       {
-        ui: { setStatus: () => {} },
+        ui: { setStatus: () => undefined },
         sessionManager: { getBranch: () => [] },
       } as never,
     );
@@ -222,7 +224,7 @@ test("caches outlive the extension factory so a resumed or new session still rea
     await eventHandler(second.eventHandlers, "agent_start")(
       {} as never,
       {
-        ui: { setStatus: () => {} },
+        ui: { setStatus: () => undefined },
         sessionManager: { getBranch: () => [] },
       } as never,
     );
@@ -258,7 +260,7 @@ test("resetSharedCaches empties the caches that outlive the factory", async () =
     await eventHandler(eventHandlers, "agent_start")(
       {} as never,
       {
-        ui: { setStatus: () => {} },
+        ui: { setStatus: () => undefined },
         sessionManager: { getBranch: () => [] },
       } as never,
     );

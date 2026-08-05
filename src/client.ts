@@ -123,7 +123,7 @@ export function createKagiClient(options: KagiClientOptions): KagiClient {
  */
 interface ErrorEnvelope {
   meta: { trace?: unknown };
-  error: Array<{ code?: unknown; message?: unknown }>;
+  error: { code?: unknown; message?: unknown }[];
 }
 
 /**
