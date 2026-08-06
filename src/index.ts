@@ -1,10 +1,10 @@
-import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
+import type { ExtensionAPI, ExtensionContext, ToolResultEvent } from "@earendil-works/pi-coding-agent";
 import BoundedCache from "./cache.ts";
 import { createKagiClient, type PageOutput, type SearchResponse } from "./client.ts";
 import { createExtractTool, PAGE_CACHE_MAX_ENTRIES } from "./extract-tool.ts";
 import { createSearchTool, SEARCH_CACHE_MAX_ENTRIES } from "./search-tool.ts";
-import { readKagiSource } from "./tool-details.ts";
 import SearchBudget from "./search-budget.ts";
+import { match, P } from "ts-pattern";
 
 // Whole-call failures are part of this package's interface: callers that
 // branch on a bad key versus a rate limit need the classes, not the prose.
@@ -118,37 +118,32 @@ export default function (pi: ExtensionAPI) {
   }
 
   /**
-   * Tallies one kagi_search/kagi_extract result into the footer counters.
-   * `readKagiSource` isolates the untyped-`details` parsing; this is left
-   * with only the decision the parsed value implies, so a paid call always
-   * lands on the counter for its own tool and a cache hit always lands on
-   * the shared one. Anything `readKagiSource` doesn't recognise — another
-   * tool's result, or a Kagi result with no `details` — is silently not our
-   * business, not an error.
+   * Tallies recognized Kagi tool results into the footer counters. The
+   * patterns validate the untyped `details` while routing cache hits to the
+   * shared counter and paid calls to the counter for their tool. Results from
+   * other tools and results with missing or malformed details are ignored,
+   * leaving both the counters and footer unchanged.
    */
-  function recordToolResult(
-    event: { toolName: string; details: unknown },
-    ctx: Parameters<typeof updateStatus>[0],
-  ): void {
-    if (event.toolName !== "kagi_search" && event.toolName !== "kagi_extract") {
-      return;
-    }
+  const recordToolResult = (event: ToolResultEvent, ctx: ExtensionContext): void => {
+    const shouldUpdate = match(event)
+      .with({ toolName: P.union("kagi_search", "kagi_extract"), details: { kagi: { source: "cache" } } }, () => {
+        cacheHits++;
+        return true;
+      })
+      .with({ toolName: "kagi_search", details: { kagi: { source: "paid" } } }, () => {
+        paidSearches++;
+        return true;
+      })
+      .with({ toolName: "kagi_extract", details: { kagi: { source: "paid" } } }, () => {
+        paidExtracts++;
+        return true;
+      })
+      .otherwise(() => false);
 
-    const source = readKagiSource(event.details);
-    if (source === undefined) {
-      return;
+    if (shouldUpdate) {
+      updateStatus(ctx);
     }
-
-    if (source === "cache") {
-      cacheHits++;
-    } else if (event.toolName === "kagi_search") {
-      paidSearches++;
-    } else {
-      paidExtracts++;
-    }
-
-    updateStatus(ctx);
-  }
+  };
 
   const [searchTool, extractTool] = createKagiTools(
     {

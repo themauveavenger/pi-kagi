@@ -3,7 +3,7 @@ import { Type } from "typebox";
 import type { ToolDefinition } from "@earendil-works/pi-coding-agent";
 import type BoundedCache from "./cache.ts";
 import type { KagiClient, PageOutput } from "./client.ts";
-import type { KagiToolDetails } from "./tool-details.ts";
+import type { KagiToolDetails } from "./kagi-tool-details.ts";
 
 import { capOutputBytes, formatExtractedPage } from "./format.ts";
 import { collapsedPagingRenderer } from "./tool-render.ts";

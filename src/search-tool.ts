@@ -5,7 +5,7 @@ import type BoundedCache from "./cache.ts";
 import type { KagiClient, SearchResponse } from "./client.ts";
 import { capOutputBytes, formatSearchResults } from "./format.ts";
 import { collapsedPagingRenderer } from "./tool-render.ts";
-import type { KagiToolDetails } from "./tool-details.ts";
+import type { KagiToolDetails } from "./kagi-tool-details.ts";
 import SearchBudget from "./search-budget.ts";
 
 const searchParameters = Type.Object({
