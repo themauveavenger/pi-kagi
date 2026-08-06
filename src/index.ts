@@ -89,13 +89,16 @@ export default function (pi: ExtensionAPI) {
       .exhaustive();
   }
 
-  function updateStatus(ctx: { ui: { setStatus(key: string, value: string | undefined): void } }): void {
-    ctx.ui.setStatus(
-      "kagi",
-      showStatus
-        ? `Kagi: ${formatSearchStatus()} · paid S:${paidSearches} E:${paidExtracts} · cache:${cacheHits}`
-        : undefined,
-    );
+  /**
+   * updates the status line at the bottom of the TUI.
+   * passing `undefined` to setStatus will clear the line.
+   */
+  function updateStatus(ctx: ExtensionContext): void {
+    const kagiStatusLine = match(showStatus)
+      .with(true, () => `Kagi: ${formatSearchStatus()} · paid S:${paidSearches} E:${paidExtracts} · cache:${cacheHits}`)
+      .otherwise(() => undefined);
+
+    ctx.ui.setStatus("kagi", kagiStatusLine);
   }
 
   function restoreStatusPreference(ctx: ExtensionContext): void {
