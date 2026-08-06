@@ -135,6 +135,25 @@ test("kagi footer status is visible by default and toggles with each /kagi call"
   assert.ok(statuses.at(-1)?.includes("Kagi: search 0/2"), "the second call restores it");
 });
 
+test("restores the persisted hidden footer preference from the session branch", async () => {
+  const { eventHandlers, pi } = captureRegistrations();
+  const statuses: (string | undefined)[] = [];
+  const ctx = {
+    ui: { setStatus: (_key: string, value: string | undefined) => statuses.push(value) },
+    sessionManager: {
+      getBranch: () => [
+        { type: "message", content: "unrelated entry" },
+        { type: "custom", customType: "kagi-settings", data: { showStatus: false } },
+      ],
+    },
+  };
+  extension(pi);
+
+  await eventHandler(eventHandlers, "session_start")({} as never, ctx as never);
+
+  assert.equal(statuses.at(-1), undefined, "the persisted hidden preference suppresses the footer");
+});
+
 test("a session with no run yet reports the cap as a per-run allowance, not a spent budget", async () => {
   const { eventHandlers, pi } = captureRegistrations();
   const statuses: (string | undefined)[] = [];

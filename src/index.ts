@@ -98,22 +98,12 @@ export default function (pi: ExtensionAPI) {
     );
   }
 
-  function restoreStatusPreference(ctx: { sessionManager: { getBranch(): unknown[] } }): void {
+  function restoreStatusPreference(ctx: ExtensionContext): void {
     for (const entry of ctx.sessionManager.getBranch()) {
-      if (typeof entry !== "object" || entry === null) {
-        continue;
-      }
-      const candidate = entry as { type?: unknown; customType?: unknown; data?: unknown };
-      if (candidate.type !== "custom" || candidate.customType !== "kagi-settings") {
-        continue;
-      }
-      if (typeof candidate.data !== "object" || candidate.data === null) {
-        continue;
-      }
-      const data = candidate.data as { showStatus?: unknown };
-      if (typeof data.showStatus === "boolean") {
-        showStatus = data.showStatus;
-      }
+      match(entry)
+        .with({ type: "custom", customType: "kagi-settings", data: { showStatus: P.boolean } }, (e) => {
+          showStatus = e.data.showStatus;
+        });
     }
   }
 
