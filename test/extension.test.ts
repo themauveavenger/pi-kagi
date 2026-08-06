@@ -84,6 +84,10 @@ test("extension preserves a settled run's search count and resets it when the ne
     const agentStart = eventHandler(eventHandlers, "agent_start");
     await agentStart({} as never, lifecycleCtx as never);
     await search.execute("one", { query: "one" }, undefined, undefined, undefined as never);
+    await agentStart({} as never, lifecycleCtx as never);
+    assert.ok(statuses.at(-1)?.includes("search 1/2 this run"), "a partially used live run shows its remaining allowance");
+    assert.ok(!statuses.at(-1)?.includes("limit reached"), "a partially used live run is not reported as exhausted");
+
     await search.execute("two", { query: "two" }, undefined, undefined, undefined as never);
     await assert.rejects(
       () => search.execute("three", { query: "three" }, undefined, undefined, undefined as never),

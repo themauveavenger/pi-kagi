@@ -79,14 +79,14 @@ export default function (pi: ExtensionAPI) {
   function formatSearchStatus(): string {
     const used = searchBudget.getUsed();
     const limit = searchBudget.getLimit();
-    switch (searchBudget.getState()) {
-      case "idle":
-        return `search ${used}/${limit} per run`;
-      case "active":
-        return used >= limit ? `search ${used}/${limit} this run (limit reached)` : `search ${used}/${limit} this run`;
-      case "settled":
-        return used > 0 ? `search ${used}/${limit} last run · resets next run` : `search ${used}/${limit} last run`;
-    }
+
+    return match([searchBudget.getState(), used])
+      .with(["idle", P.any], ([, u]) => `search ${u}/${limit} per run`)
+      .with(["active", P.number.gte(limit)], ([, u]) => `search ${u}/${limit} this run (limit reached)`)
+      .with(["active", P.any], ([, u]) => `search ${u}/${limit} this run`)
+      .with(["settled", P.number.gt(0)], ([, u]) => `search ${u}/${limit} last run · resets next run`)
+      .with(["settled", P.any], ([, u]) => `search ${u}/${limit} last run`)
+      .exhaustive();
   }
 
   function updateStatus(ctx: { ui: { setStatus(key: string, value: string | undefined): void } }): void {
